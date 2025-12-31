@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "226932186472",
+    "project_id": "artisthub-f84dc",
+    "storage_bucket": "artisthub-f84dc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:226932186472:android:d1a965e7e0728f61ae0add",
+        "android_client_info": {
+          "package_name": "com.example.artist_hub"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "226932186472-vfk7bnn0kk8davu6r39tt0h9ueuaught.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.artist_hub",
+            "certificate_hash": "9da8f085bb2b78485c64b60ee671c36497b3f84c"
+          }
+        },
+        {
+          "client_id": "226932186472-qseb8vfcbuutlo2u97ee97g2t0f8qhkj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQ6RHYup1zzNOPs8LszXM7D6skFCK5QAM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "226932186472-qseb8vfcbuutlo2u97ee97g2t0f8qhkj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
