@@ -12,7 +12,7 @@ import 'package:artist_hub/customer/bookings/booking_screen.dart';
 import 'package:artist_hub/core/services/api_service.dart';
 import 'package:http/http.dart' as http;
 
-// Helper class for URL construction
+// Enhanced Helper class for URL construction
 class UrlHelper {
   static const String baseUrl = 'https://prakrutitech.xyz/gaurang/';
 
@@ -38,7 +38,7 @@ class UrlHelper {
   }
 }
 
-// Like Service
+// Enhanced Like Service
 class LikeService {
   static Future<Map<String, dynamic>> toggleLike(int userId, int mediaId) async {
     try {
@@ -52,12 +52,62 @@ class LikeService {
 
       if (response.statusCode == 200) {
         return json.decode(response.body);
-      } else {
-        return {
-          'status': false,
-          'message': 'Server error: ${response.statusCode}',
-        };
       }
+      return {
+        'status': false,
+        'message': 'Server error: ${response.statusCode}',
+      };
+    } catch (e) {
+      return {
+        'status': false,
+        'message': 'Network error: $e',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> addComment({
+    required int userId,
+    required int mediaId,
+    required String comment,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://prakrutitech.xyz/gaurang/add_comments.php'),
+        body: {
+          'user_id': userId.toString(),
+          'media_id': mediaId.toString(),
+          'comment': comment,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return {
+        'status': false,
+        'message': 'Server error: ${response.statusCode}',
+      };
+    } catch (e) {
+      return {
+        'status': false,
+        'message': 'Network error: $e',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> getComments(int mediaId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://prakrutitech.xyz/gaurang/view_comments.php?media_id=$mediaId'),
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return {
+        'status': false,
+        'message': 'Server error: ${response.statusCode}',
+      };
     } catch (e) {
       return {
         'status': false,
@@ -95,7 +145,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: AppColors.background,
       body: _screens[_currentIndex],
       bottomNavigationBar: _buildBottomNav(),
     );
@@ -104,14 +154,14 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
   Widget _buildBottomNav() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: AppColors.textColor.withOpacity(0.08),
             blurRadius: 20,
             offset: const Offset(0, -4),
           ),
@@ -138,11 +188,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
   Widget _buildNavItem(IconData icon, String label, int index) {
     bool isSelected = _currentIndex == index;
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _currentIndex = index;
-        });
-      },
+      onTap: () => setState(() => _currentIndex = index),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
@@ -154,7 +200,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
           children: [
             Icon(
               icon,
-              color: isSelected ? AppColors.primaryColor : const Color(0xFF8D8D8D),
+              color: isSelected ? AppColors.primaryColor : AppColors.textColor.withOpacity(0.6),
               size: isSelected ? 24 : 22,
             ),
             const SizedBox(height: 4),
@@ -163,7 +209,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected ? AppColors.primaryColor : const Color(0xFF8D8D8D),
+                color: isSelected ? AppColors.primaryColor : AppColors.textColor.withOpacity(0.6),
               ),
             ),
           ],
@@ -195,16 +241,12 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
   }
 
   void _safeSetState(VoidCallback fn) {
-    if (mounted) {
-      setState(fn);
-    }
+    if (mounted) setState(fn);
   }
 
   Future<void> _loadArtistPosts() async {
     try {
-      _safeSetState(() {
-        _isLoadingPosts = true;
-      });
+      _safeSetState(() => _isLoadingPosts = true);
 
       final response = await ApiService.getArtistMedia();
 
@@ -214,23 +256,28 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
         final posts = response['data'] ?? [];
         _safeSetState(() {
           _artistPosts = posts;
-          // Initialize like status
           for (var post in posts) {
-            final id = post['id'] as int? ?? 0;
-            final likes = int.tryParse(post['likes_count']?.toString() ?? '0') ?? 0;
-            _postLikesCount[id] = likes;
-            _postLikedStatus[id] = false; // Default to false, you can check actual status from API if available
+            try {
+              // FIXED: Handle both string and int IDs
+              final id = post['id'] is int ? post['id'] : int.tryParse(post['id']?.toString() ?? '0') ?? 0;
+              final likes = post['likes_count'] is int
+                  ? post['likes_count']
+                  : int.tryParse(post['likes_count']?.toString() ?? '0') ?? 0;
+              _postLikesCount[id] = likes;
+              _postLikedStatus[id] = false;
+            } catch (e) {
+              debugPrint('Error parsing post data: $e');
+            }
           }
         });
       }
     } catch (e) {
       if (!mounted) return;
-      print('Error loading posts: $e');
+      debugPrint('Error loading posts: $e');
     } finally {
-      if (!mounted) return;
-      _safeSetState(() {
-        _isLoadingPosts = false;
-      });
+      if (mounted) {
+        _safeSetState(() => _isLoadingPosts = false);
+      }
     }
   }
 
@@ -241,23 +288,19 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
     final currentLiked = _postLikedStatus[postId] ?? false;
     final currentCount = _postLikesCount[postId] ?? 0;
 
-    // Optimistic update
     _safeSetState(() {
       _postLikedStatus[postId] = !currentLiked;
       _postLikesCount[postId] = currentLiked ? currentCount - 1 : currentCount + 1;
     });
 
-    // API call
     final result = await LikeService.toggleLike(user.id!, mediaId);
 
     if (!result['status'] && mounted) {
-      // Revert on error
       _safeSetState(() {
         _postLikedStatus[postId] = currentLiked;
         _postLikesCount[postId] = currentCount;
       });
 
-      // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result['message'] ?? 'Failed to update like'),
@@ -265,11 +308,10 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
         ),
       );
     } else if (mounted) {
-      // Update with actual count from server
-      final totalLikes = result['total_likes'] as int? ?? _postLikesCount[postId]!;
-      _safeSetState(() {
-        _postLikesCount[postId] = totalLikes;
-      });
+      final totalLikes = result['total_likes'] is int
+          ? result['total_likes']
+          : int.tryParse(result['total_likes']?.toString() ?? '0') ?? _postLikesCount[postId]!;
+      _safeSetState(() => _postLikesCount[postId] = totalLikes);
     }
   }
 
@@ -284,21 +326,21 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
         physics: const BouncingScrollPhysics(),
         slivers: [
           SliverAppBar(
-            backgroundColor: Colors.white,
-            expandedHeight: 180,
+            backgroundColor: AppColors.card,
+            expandedHeight: 200,
             floating: false,
             pinned: true,
-            elevation: 1,
+            elevation: 0,
             flexibleSpace: FlexibleSpaceBar(
               collapseMode: CollapseMode.pin,
               background: Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.white,
-                      Color(0xFFF9FAFB),
+                      AppColors.card,
+                      AppColors.background,
                     ],
                   ),
                 ),
@@ -313,27 +355,42 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.primaryColor.withOpacity(0.8),
-                        letterSpacing: 0.5,
+                        color: AppColors.textColor.withOpacity(0.8),
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       user?.name ?? 'User',
-                      style: const TextStyle(
-                        fontSize: 28,
+                      style: TextStyle(
+                        fontSize: 32,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1F2937),
+                        color: AppColors.textColor,
+                        fontFamily: 'Playfair',
                       ),
                     ),
                     const SizedBox(height: 12),
-                    const Text(
-                      'Discover amazing artists & book your favorite',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFF6B7280),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.gold.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.gold.withOpacity(0.3)),
                       ),
-                      maxLines: 2,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.brush_outlined, size: 16, color: AppColors.gold),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Inspire, Create, Connect',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textColor.withOpacity(0.8),
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -345,11 +402,11 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 const _SearchBar(),
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
                 const _CategoriesSection(),
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
                 const _AllArtistsSection(),
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
                 _ArtistPostsSection(
                   posts: _artistPosts,
                   isLoading: _isLoadingPosts,
@@ -378,38 +435,30 @@ class _SearchBar extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const SearchArtistScreen()),
-          );
-        },
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchArtistScreen())),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.card,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: AppColors.textColor.withOpacity(0.05),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
             ],
+            border: Border.all(color: AppColors.accentColor),
           ),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryColor.withOpacity(0.1),
+                  color: AppColors.gold.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  Icons.search_rounded,
-                  color: AppColors.primaryColor,
-                  size: 22,
-                ),
+                child: Icon(Icons.search_rounded, color: AppColors.gold, size: 22),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -421,25 +470,21 @@ class _SearchBar extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.primaryColor,
+                        color: AppColors.textColor,
                       ),
                     ),
                     const SizedBox(height: 2),
-                    const Text(
+                    Text(
                       'Find by name, category, or location',
                       style: TextStyle(
                         fontSize: 13,
-                        color: Color(0xFF6B7280),
+                        color: AppColors.textColor.withOpacity(0.6),
                       ),
                     ),
                   ],
                 ),
               ),
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 18,
-                color: Colors.grey.shade400,
-              ),
+              Icon(Icons.arrow_forward_ios_rounded, size: 18, color: AppColors.textColor.withOpacity(0.4)),
             ],
           ),
         ),
@@ -456,12 +501,12 @@ class _CategoriesSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final categories = [
-      {'name': 'Singers', 'icon': Icons.mic_rounded, 'color': Colors.blue.shade600},
-      {'name': 'Musicians', 'icon': Icons.music_note_rounded, 'color': Colors.green.shade600},
-      {'name': 'Painters', 'icon': Icons.brush_rounded, 'color': Colors.orange.shade600},
-      {'name': 'Dancers', 'icon': Icons.directions_run_rounded, 'color': Colors.purple.shade600},
-      {'name': 'Photographers', 'icon': Icons.camera_alt_rounded, 'color': Colors.red.shade600},
-      {'name': 'Performers', 'icon': Icons.theater_comedy_rounded, 'color': Colors.teal.shade600},
+      {'name': 'Singers', 'icon': Icons.mic_rounded, 'color': Colors.blue},
+      {'name': 'Musicians', 'icon': Icons.music_note_rounded, 'color': Colors.green},
+      {'name': 'Painters', 'icon': Icons.brush_rounded, 'color': Colors.orange},
+      {'name': 'Dancers', 'icon': Icons.directions_run_rounded, 'color': Colors.purple},
+      {'name': 'Photographers', 'icon': Icons.camera_alt_rounded, 'color': Colors.red},
+      {'name': 'Performers', 'icon': Icons.theater_comedy_rounded, 'color': Colors.teal},
     ];
 
     return Column(
@@ -495,11 +540,7 @@ class _CategoryCard extends StatelessWidget {
   final IconData icon;
   final Color color;
 
-  const _CategoryCard({
-    required this.name,
-    required this.icon,
-    required this.color,
-  });
+  const _CategoryCard({required this.name, required this.icon, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -507,15 +548,16 @@ class _CategoryCard extends StatelessWidget {
       width: 160,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: AppColors.textColor.withOpacity(0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
+        border: Border.all(color: AppColors.accentColor),
       ),
       child: Row(
         children: [
@@ -525,11 +567,7 @@ class _CategoryCard extends StatelessWidget {
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 24,
-            ),
+            child: Icon(icon, color: color, size: 24),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -577,13 +615,11 @@ class _AllArtistsSection extends StatelessWidget {
           return Container(
             height: 200,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.card,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFEAEAEA)),
+              border: Border.all(color: AppColors.accentColor),
             ),
-            child: const Center(
-              child: CircularProgressIndicator(color: AppColors.primaryColor),
-            ),
+            child: Center(child: CircularProgressIndicator(color: AppColors.primaryColor)),
           );
         }
 
@@ -596,27 +632,17 @@ class _AllArtistsSection extends StatelessWidget {
           children: [
             const _SectionTitle('Featured Artists'),
             const SizedBox(height: 16),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final crossAxisCount = constraints.maxWidth > 600 ? 3 : 2;
-                final artists = provider.artists.take(4).toList();
-
-                return GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: artists.length,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 0.85,
-                  ),
-                  itemBuilder: (_, index) {
-                    final artist = artists[index];
-                    return _ArtistCard(artist: artist);
-                  },
-                );
-              },
+            SizedBox(
+              height: 260,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: provider.artists.length > 4 ? 4 : provider.artists.length,
+                separatorBuilder: (_, i) => const SizedBox(width: 16),
+                itemBuilder: (_, index) {
+                  final artist = provider.artists[index];
+                  return _ArtistCard(artist: artist);
+                },
+              ),
             ),
             if (provider.artists.length > 4)
               Padding(
@@ -636,11 +662,7 @@ class _AllArtistsSection extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 18,
-                          color: AppColors.primaryColor,
-                        ),
+                        Icon(Icons.arrow_forward_rounded, size: 18, color: AppColors.primaryColor),
                       ],
                     ),
                   ),
@@ -656,25 +678,17 @@ class _AllArtistsSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFEAEAEA)),
+        border: Border.all(color: AppColors.accentColor),
       ),
       child: Column(
         children: [
-          Icon(
-            Icons.people_outline_rounded,
-            size: 64,
-            color: AppColors.primaryColor.withOpacity(0.3),
-          ),
+          Icon(Icons.people_outline_rounded, size: 64, color: AppColors.textColor.withOpacity(0.3)),
           const SizedBox(height: 16),
           const Text(
             'No Artists Available',
-            style: TextStyle(
-              fontSize: 18,
-              color: Color(0xFF1F2937),
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(fontSize: 18, color: Color(0xFF1F2937), fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           const Padding(
@@ -682,10 +696,7 @@ class _AllArtistsSection extends StatelessWidget {
             child: Text(
               'Check back soon for amazing artists in your area',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF6B7280),
-              ),
+              style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
             ),
           ),
         ],
@@ -694,7 +705,7 @@ class _AllArtistsSection extends StatelessWidget {
   }
 }
 
-/* ================= ARTIST CARD ================= */
+/* ================= ARTIST CARD - FIXED OVERFLOW ================= */
 
 class _ArtistCard extends StatelessWidget {
   final ArtistModel artist;
@@ -706,63 +717,71 @@ class _ArtistCard extends StatelessWidget {
     final iconData = _getArtistIcon(artist.category);
     final iconColor = _getCategoryColor(artist.category);
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => _showDetails(context),
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                height: 140,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
-                  ),
-                  color: iconColor.withOpacity(0.1),
+    return GestureDetector(
+      onTap: () {
+        showModalBottomSheet(
+          isScrollControlled: true,
+          context: context,
+          backgroundColor: Colors.transparent,
+          builder: (_) => ArtistDetailsBottomSheet(artist: artist),
+        );
+      },
+      child: Container(
+        width: 200,
+        constraints: const BoxConstraints(
+          maxHeight: 260, // Fixed height constraint
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.textColor.withOpacity(0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(color: AppColors.accentColor),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min, // Important: prevents overflow
+          children: [
+            Container(
+              height: 140,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
                 ),
-                child: Center(
-                  child: Container(
-                    width: 70,
-                    height: 70,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: iconColor.withOpacity(0.2),
-                          blurRadius: 10,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      iconData,
-                      size: 32,
-                      color: iconColor,
-                    ),
+                color: iconColor.withOpacity(0.1),
+              ),
+              child: Center(
+                child: Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: iconColor.withOpacity(0.2),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
+                    ],
                   ),
+                  child: Icon(iconData, size: 32, color: iconColor),
                 ),
               ),
-              Padding(
+            ),
+            Expanded(
+              child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       artist.name ?? 'Artist',
@@ -777,19 +796,12 @@ class _ArtistCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        Icon(
-                          iconData,
-                          size: 14,
-                          color: const Color(0xFF6B7280),
-                        ),
+                        Icon(iconData, size: 14, color: AppColors.textColor.withOpacity(0.6)),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             artist.category ?? 'Artist',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF6B7280),
-                            ),
+                            style: TextStyle(fontSize: 13, color: AppColors.textColor.withOpacity(0.6)),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -800,49 +812,57 @@ class _ArtistCard extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: Colors.amber.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: const Icon(
-                                Icons.star_rounded,
-                                size: 14,
-                                color: Colors.amber,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  artist.avgRating?.toStringAsFixed(1) ?? '4.5',
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF1F2937),
-                                  ),
+                        Flexible(
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
                                 ),
-                                Text(
-                                  '${artist.totalReviews ?? 0} reviews',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Color(0xFF9CA3AF),
-                                  ),
+                                child: const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      artist.avgRating?.toStringAsFixed(1) ?? '4.5',
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF1F2937),
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      '${artist.totalReviews ?? 0} reviews',
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Color(0xFF9CA3AF),
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          ],
+                              ),
+                            ],
+                          ),
                         ),
-                        Text(
-                          '₹${artist.price ?? 0}',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryColor,
+                        Flexible(
+                          child: Text(
+                            '₹${artist.price ?? 0}',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primaryColor,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -850,8 +870,8 @@ class _ArtistCard extends StatelessWidget {
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -860,48 +880,29 @@ class _ArtistCard extends StatelessWidget {
   IconData _getArtistIcon(String? category) {
     if (category == null) return Icons.person_rounded;
     final lowerCategory = category.toLowerCase();
-    if (lowerCategory.contains('singer') || lowerCategory.contains('vocal')) {
-      return Icons.mic_rounded;
-    } else if (lowerCategory.contains('music') || lowerCategory.contains('instrument')) {
-      return Icons.music_note_rounded;
-    } else if (lowerCategory.contains('painter') || lowerCategory.contains('artist')) {
-      return Icons.brush_rounded;
-    } else if (lowerCategory.contains('dancer') || lowerCategory.contains('dance')) {
-      return Icons.directions_run_rounded;
-    } else if (lowerCategory.contains('photo') || lowerCategory.contains('camera')) {
-      return Icons.camera_alt_rounded;
-    } else if (lowerCategory.contains('actor') || lowerCategory.contains('performer')) {
-      return Icons.theater_comedy_rounded;
-    } else if (lowerCategory.contains('designer') || lowerCategory.contains('graphic')) {
-      return Icons.palette_rounded;
-    } else if (lowerCategory.contains('writer') || lowerCategory.contains('poet')) {
-      return Icons.edit_rounded;
-    } else {
-      return Icons.person_rounded;
-    }
+    if (lowerCategory.contains('singer')) return Icons.mic_rounded;
+    if (lowerCategory.contains('music')) return Icons.music_note_rounded;
+    if (lowerCategory.contains('painter')) return Icons.brush_rounded;
+    if (lowerCategory.contains('dancer')) return Icons.directions_run_rounded;
+    if (lowerCategory.contains('photo')) return Icons.camera_alt_rounded;
+    if (lowerCategory.contains('actor')) return Icons.theater_comedy_rounded;
+    if (lowerCategory.contains('designer')) return Icons.palette_rounded;
+    if (lowerCategory.contains('writer')) return Icons.edit_rounded;
+    return Icons.person_rounded;
   }
 
   Color _getCategoryColor(String? category) {
     if (category == null) return AppColors.primaryColor;
     final lowerCategory = category.toLowerCase();
-    if (lowerCategory.contains('singer')) return Colors.blue.shade600;
-    if (lowerCategory.contains('music')) return Colors.green.shade600;
-    if (lowerCategory.contains('painter') || lowerCategory.contains('artist')) return Colors.orange.shade600;
-    if (lowerCategory.contains('dancer')) return Colors.purple.shade600;
-    if (lowerCategory.contains('photo')) return Colors.red.shade600;
-    if (lowerCategory.contains('actor') || lowerCategory.contains('performer')) return Colors.teal.shade600;
-    if (lowerCategory.contains('designer')) return Colors.pink.shade600;
-    if (lowerCategory.contains('writer')) return Colors.brown.shade600;
+    if (lowerCategory.contains('singer')) return Colors.blue;
+    if (lowerCategory.contains('music')) return Colors.green;
+    if (lowerCategory.contains('painter')) return Colors.orange;
+    if (lowerCategory.contains('dancer')) return Colors.purple;
+    if (lowerCategory.contains('photo')) return Colors.red;
+    if (lowerCategory.contains('actor')) return Colors.teal;
+    if (lowerCategory.contains('designer')) return Colors.pink;
+    if (lowerCategory.contains('writer')) return Colors.brown;
     return AppColors.primaryColor;
-  }
-
-  void _showDetails(BuildContext context) {
-    showModalBottomSheet(
-      isScrollControlled: true,
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => ArtistDetailsBottomSheet(artist: artist),
-    );
   }
 }
 
@@ -928,13 +929,11 @@ class _ArtistPostsSection extends StatelessWidget {
       return Container(
         height: 200,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.card,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFEAEAEA)),
+          border: Border.all(color: AppColors.accentColor),
         ),
-        child: const Center(
-          child: CircularProgressIndicator(color: AppColors.primaryColor),
-        ),
+        child: Center(child: CircularProgressIndicator(color: AppColors.primaryColor)),
       );
     }
 
@@ -942,36 +941,22 @@ class _ArtistPostsSection extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 40),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.card,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFEAEAEA)),
+          border: Border.all(color: AppColors.accentColor),
         ),
         child: Column(
           children: [
-            Icon(
-              Icons.photo_library_outlined,
-              size: 64,
-              color: AppColors.primaryColor.withOpacity(0.3),
-            ),
+            Icon(Icons.photo_library_outlined, size: 64, color: AppColors.textColor.withOpacity(0.3)),
             const SizedBox(height: 16),
-            const Text(
-              'No Posts Yet',
-              style: TextStyle(
-                fontSize: 18,
-                color: Color(0xFF1F2937),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            const Text('No Posts Yet', style: TextStyle(fontSize: 18, color: Color(0xFF1F2937), fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 20),
               child: Text(
                 'Follow artists to see their latest work',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF6B7280),
-                ),
+                style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
               ),
             ),
           ],
@@ -996,13 +981,13 @@ class _ArtistPostsSection extends StatelessWidget {
           ),
           itemBuilder: (context, index) {
             final post = posts[index];
+            final postId = post['id'] is int ? post['id'] : int.tryParse(post['id']?.toString() ?? '0') ?? 0;
             return _PostCard(
               post: post,
-              isLiked: postLikedStatus[post['id'] as int? ?? 0] ?? false,
-              likesCount: postLikesCount[post['id'] as int? ?? 0] ?? 0,
+              isLiked: postLikedStatus[postId] ?? false,
+              likesCount: postLikesCount[postId] ?? 0,
               onLikeTapped: () {
-                final postId = post['id'] as int? ?? 0;
-                final mediaId = post['media_id'] as int? ?? 0;
+                final mediaId = post['media_id'] is int ? post['media_id'] : int.tryParse(post['media_id']?.toString() ?? '0') ?? 0;
                 onLikeTapped(postId, mediaId);
               },
             );
@@ -1015,7 +1000,7 @@ class _ArtistPostsSection extends StatelessWidget {
               child: ElevatedButton.icon(
                 onPressed: () {},
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
+                  backgroundColor: AppColors.card,
                   foregroundColor: AppColors.primaryColor,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -1024,12 +1009,7 @@ class _ArtistPostsSection extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 ),
                 icon: const Icon(Icons.collections_rounded, size: 18),
-                label: const Text(
-                  'View All Posts',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                label: const Text('View All Posts', style: TextStyle(fontWeight: FontWeight.w600)),
               ),
             ),
           ),
@@ -1046,12 +1026,7 @@ class _PostCard extends StatelessWidget {
   final int likesCount;
   final VoidCallback onLikeTapped;
 
-  const _PostCard({
-    required this.post,
-    required this.isLiked,
-    required this.likesCount,
-    required this.onLikeTapped,
-  });
+  const _PostCard({required this.post, required this.isLiked, required this.likesCount, required this.onLikeTapped});
 
   @override
   Widget build(BuildContext context) {
@@ -1063,26 +1038,18 @@ class _PostCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          _showPostDetails(context, post, isLiked, likesCount, onLikeTapped);
-        },
+        onTap: () => _showPostDetails(context),
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ],
+            boxShadow: [BoxShadow(color: AppColors.textColor.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 3))],
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: Stack(
               children: [
                 Container(
-                  color: const Color(0xFFF8FAFC),
+                  color: AppColors.background,
                   child: fullImageUrl.isNotEmpty
                       ? Image.network(
                     fullImageUrl,
@@ -1092,14 +1059,13 @@ class _PostCard extends StatelessWidget {
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
                       return Container(
-                        color: const Color(0xFFF1F5F9),
+                        color: AppColors.accentColor,
                         child: Center(
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             color: AppColors.primaryColor,
                             value: loadingProgress.expectedTotalBytes != null
-                                ? loadingProgress.cumulativeBytesLoaded /
-                                loadingProgress.expectedTotalBytes!
+                                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
                                 : null,
                           ),
                         ),
@@ -1107,24 +1073,24 @@ class _PostCard extends StatelessWidget {
                     },
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
-                        color: const Color(0xFFF1F5F9),
+                        color: AppColors.accentColor,
                         child: Center(
                           child: Icon(
                             mediaType == 'video' ? Icons.videocam_rounded : Icons.photo_rounded,
                             size: 32,
-                            color: const Color(0xFFCBD5E1),
+                            color: AppColors.textColor.withOpacity(0.3),
                           ),
                         ),
                       );
                     },
                   )
                       : Container(
-                    color: const Color(0xFFF1F5F9),
+                    color: AppColors.accentColor,
                     child: Center(
                       child: Icon(
                         mediaType == 'video' ? Icons.videocam_rounded : Icons.photo_rounded,
                         size: 32,
-                        color: const Color(0xFFCBD5E1),
+                        color: AppColors.textColor.withOpacity(0.3),
                       ),
                     ),
                   ),
@@ -1134,10 +1100,7 @@ class _PostCard extends StatelessWidget {
                     gradient: LinearGradient(
                       begin: Alignment.bottomCenter,
                       end: Alignment.center,
-                      colors: [
-                        Colors.black.withOpacity(0.4),
-                        Colors.transparent,
-                      ],
+                      colors: [Colors.black.withOpacity(0.4), Colors.transparent],
                     ),
                   ),
                 ),
@@ -1151,11 +1114,7 @@ class _PostCard extends StatelessWidget {
                         color: Colors.black.withOpacity(0.6),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(
-                        Icons.play_arrow_rounded,
-                        size: 16,
-                        color: Colors.white,
-                      ),
+                      child: const Icon(Icons.play_arrow_rounded, size: 16, color: Colors.white),
                     ),
                   ),
                 Positioned(
@@ -1164,7 +1123,7 @@ class _PostCard extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.9),
+                      color: AppColors.card.withOpacity(0.9),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -1174,17 +1133,13 @@ class _PostCard extends StatelessWidget {
                           child: Icon(
                             isLiked ? Icons.favorite_rounded : Icons.favorite_outline_rounded,
                             size: 14,
-                            color: isLiked ? Colors.red : const Color(0xFF6B7280),
+                            color: isLiked ? Colors.red : AppColors.textColor.withOpacity(0.6),
                           ),
                         ),
                         const SizedBox(width: 4),
                         Text(
                           likesCount.toString(),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1F2937),
-                          ),
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1F2937)),
                         ),
                       ],
                     ),
@@ -1198,7 +1153,7 @@ class _PostCard extends StatelessWidget {
     );
   }
 
-  void _showPostDetails(BuildContext context, dynamic post, bool isLiked, int likesCount, VoidCallback onLikeTapped) {
+  void _showPostDetails(BuildContext context) {
     showModalBottomSheet(
       isScrollControlled: true,
       context: context,
@@ -1236,12 +1191,59 @@ class PostDetailsBottomSheet extends StatefulWidget {
 class _PostDetailsBottomSheetState extends State<PostDetailsBottomSheet> {
   late bool _isLiked;
   late int _likesCount;
+  List<dynamic> _comments = [];
+  bool _loadingComments = false;
+  final TextEditingController _commentController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _isLiked = widget.isLiked;
     _likesCount = widget.likesCount;
+    _loadComments();
+  }
+
+  Future<void> _loadComments() async {
+    setState(() => _loadingComments = true);
+    final mediaId = widget.post['media_id'] is int ? widget.post['media_id'] : int.tryParse(widget.post['media_id']?.toString() ?? '0') ?? 0;
+    final result = await LikeService.getComments(mediaId);
+    if (result['status'] == true && mounted) {
+      setState(() => _comments = result['data'] ?? []);
+    }
+    setState(() => _loadingComments = false);
+  }
+
+  Future<void> _addComment() async {
+    if (_commentController.text.isEmpty) return;
+
+    final user = Provider.of<AuthProvider>(context, listen: false).user;
+    if (user == null) return;
+
+    final mediaId = widget.post['media_id'] is int ? widget.post['media_id'] : int.tryParse(widget.post['media_id']?.toString() ?? '0') ?? 0;
+    final result = await LikeService.addComment(
+      userId: user.id!,
+      mediaId: mediaId,
+      comment: _commentController.text,
+    );
+
+    if (result['status'] == true && mounted) {
+      _commentController.clear();
+      await _loadComments();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      });
+    }
+  }
+
+  void _sharePost() {
+    // Implement sharing logic
+    final mediaUrl = UrlHelper.getMediaUrl(widget.post['media_url']?.toString() ?? '');
+    // You can use share_plus package for actual sharing
   }
 
   void _handleLike() {
@@ -1256,27 +1258,21 @@ class _PostDetailsBottomSheetState extends State<PostDetailsBottomSheet> {
   Widget build(BuildContext context) {
     final mediaUrl = widget.post['media_url']?.toString() ?? '';
     final caption = widget.post['caption']?.toString() ?? '';
-    final commentsCount = int.tryParse(widget.post['comments_count']?.toString() ?? '0') ?? 0;
     final createdAt = widget.post['created_at']?.toString() ?? '';
     final mediaType = widget.post['media_type']?.toString() ?? 'image';
     final fullImageUrl = UrlHelper.getMediaUrl(mediaUrl);
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.9,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: const BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
       ),
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-            ),
+            decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.accentColor))),
             child: Row(
               children: [
                 GestureDetector(
@@ -1284,25 +1280,14 @@ class _PostDetailsBottomSheetState extends State<PostDetailsBottomSheet> {
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
+                      color: AppColors.background,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(
-                      Icons.close_rounded,
-                      size: 20,
-                      color: Color(0xFF64748B),
-                    ),
+                    child: Icon(Icons.close_rounded, size: 20, color: AppColors.textColor.withOpacity(0.6)),
                   ),
                 ),
                 const SizedBox(width: 16),
-                const Text(
-                  'Post Details',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1F2937),
-                  ),
-                ),
+                Text('Post Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textColor)),
                 const Spacer(),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -1312,213 +1297,177 @@ class _PostDetailsBottomSheetState extends State<PostDetailsBottomSheet> {
                   ),
                   child: Text(
                     mediaType == 'video' ? 'Video' : 'Image',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primaryColor,
-                    ),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primaryColor),
                   ),
                 ),
               ],
             ),
           ),
           Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    height: 350,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      image: fullImageUrl.isNotEmpty
-                          ? DecorationImage(
-                        image: NetworkImage(fullImageUrl),
-                        fit: BoxFit.cover,
-                      )
-                          : null,
-                    ),
-                    child: fullImageUrl.isEmpty
-                        ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF1F5F9),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              mediaType == 'video' ? Icons.videocam_rounded : Icons.photo_rounded,
-                              size: 40,
-                              color: const Color(0xFFCBD5E1),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Media not available',
-                            style: TextStyle(
-                              color: Color(0xFF64748B),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                        : null,
+            child: Column(
+              children: [
+                Container(
+                  height: 300,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    image: fullImageUrl.isNotEmpty ? DecorationImage(image: NetworkImage(fullImageUrl), fit: BoxFit.cover) : null,
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(24),
+                  child: fullImageUrl.isEmpty
+                      ? Center(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(color: AppColors.accentColor, shape: BoxShape.circle),
+                          child: Icon(
+                            mediaType == 'video' ? Icons.videocam_rounded : Icons.photo_rounded,
+                            size: 40,
+                            color: AppColors.textColor.withOpacity(0.3),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text('Media not available', style: TextStyle(color: AppColors.textColor.withOpacity(0.6))),
+                      ],
+                    ),
+                  )
+                      : null,
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
                       children: [
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
+                            color: AppColors.background,
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              GestureDetector(
-                                onTap: _handleLike,
-                                child: Column(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(10),
-                                      decoration: BoxDecoration(
-                                        color: Colors.red.withOpacity(0.1),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(
-                                        _isLiked ? Icons.favorite_rounded : Icons.favorite_outline_rounded,
-                                        size: 20,
-                                        color: Colors.red,
-                                      ),
+                              Column(
+                                children: [
+                                  IconButton(
+                                    onPressed: _handleLike,
+                                    icon: Icon(
+                                      _isLiked ? Icons.favorite_rounded : Icons.favorite_outline_rounded,
+                                      color: _isLiked ? Colors.red : AppColors.textColor.withOpacity(0.6),
+                                      size: 28,
                                     ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      _likesCount.toString(),
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF1F2937),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    const Text(
-                                      'Likes',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Color(0xFF64748B),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                  Text(_likesCount.toString(), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textColor)),
+                                ],
                               ),
                               Column(
                                 children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: Colors.blue.withOpacity(0.1),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.comment_rounded,
-                                      size: 20,
-                                      color: Colors.blue,
-                                    ),
+                                  IconButton(
+                                    onPressed: () {},
+                                    icon: Icon(Icons.comment_rounded, color: AppColors.textColor.withOpacity(0.6), size: 28),
                                   ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    commentsCount.toString(),
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF1F2937),
-                                    ),
+                                  Text(_comments.length.toString(), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textColor)),
+                                ],
+                              ),
+                              Column(
+                                children: [
+                                  IconButton(
+                                    onPressed: _sharePost,
+                                    icon: Icon(Icons.share_rounded, color: AppColors.textColor.withOpacity(0.6), size: 28),
                                   ),
-                                  const SizedBox(height: 4),
-                                  const Text(
-                                    'Comments',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Color(0xFF64748B),
-                                    ),
-                                  ),
+                                  Text('Share', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textColor)),
                                 ],
                               ),
                             ],
                           ),
                         ),
-                        if (caption.isNotEmpty) ...[
-                          const SizedBox(height: 24),
-                          Text(
-                            'Caption',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primaryColor,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            caption,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: Color(0xFF334155),
-                              height: 1.6,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 24),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(
-                                Icons.calendar_today_rounded,
-                                size: 18,
-                                color: AppColors.primaryColor,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Posted on',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Color(0xFF64748B),
-                                  ),
+                        const SizedBox(height: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (caption.isNotEmpty) ...[
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  child: Text(caption, style: TextStyle(fontSize: 15, color: AppColors.textColor, height: 1.6)),
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  _formatDate(createdAt),
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF1F2937),
-                                  ),
-                                ),
+                                const SizedBox(height: 16),
                               ],
-                            ),
-                          ],
+                              const Divider(),
+                              const SizedBox(height: 8),
+                              Text('Comments (${_comments.length})', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textColor)),
+                              const SizedBox(height: 8),
+                              Expanded(
+                                child: _loadingComments
+                                    ? Center(child: CircularProgressIndicator(color: AppColors.primaryColor))
+                                    : _comments.isEmpty
+                                    ? Center(child: Text('No comments yet', style: TextStyle(color: AppColors.textColor.withOpacity(0.6))))
+                                    : ListView.builder(
+                                  controller: _scrollController,
+                                  itemCount: _comments.length,
+                                  itemBuilder: (context, index) {
+                                    final comment = _comments[index];
+                                    return Container(
+                                      margin: const EdgeInsets.only(bottom: 12),
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.background,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(comment['name'] ?? 'User', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textColor)),
+                                          const SizedBox(height: 4),
+                                          Text(comment['comment'] ?? '', style: TextStyle(color: AppColors.textColor.withOpacity(0.8))),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            _formatDate(comment['created_at']?.toString() ?? ''),
+                                            style: TextStyle(fontSize: 11, color: AppColors.textColor.withOpacity(0.5)),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.background,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _commentController,
+                                  decoration: InputDecoration(
+                                    hintText: 'Add a comment...',
+                                    hintStyle: TextStyle(color: AppColors.textColor.withOpacity(0.5)),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                                  ),
+                                  style: TextStyle(color: AppColors.textColor),
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: _addComment,
+                                icon: Icon(Icons.send_rounded, color: AppColors.primaryColor),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
@@ -1529,22 +1478,19 @@ class _PostDetailsBottomSheetState extends State<PostDetailsBottomSheet> {
   String _formatDate(String dateString) {
     try {
       final date = DateTime.parse(dateString);
-      return '${_getMonthName(date.month)} ${date.day}, ${date.year}';
+      return '${_getMonthName(date.month)} ${date.day}, ${date.year} at ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
     } catch (e) {
       return dateString;
     }
   }
 
   String _getMonthName(int month) {
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return months[month - 1];
   }
 }
 
-/* ================= DETAILS BOTTOM SHEET ================= */
+/* ================= ARTIST DETAILS BOTTOM SHEET ================= */
 
 class ArtistDetailsBottomSheet extends StatelessWidget {
   final ArtistModel artist;
@@ -1557,20 +1503,15 @@ class ArtistDetailsBottomSheet extends StatelessWidget {
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.9,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: const BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
       ),
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-            ),
+            decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.accentColor))),
             child: Row(
               children: [
                 GestureDetector(
@@ -1578,25 +1519,14 @@ class ArtistDetailsBottomSheet extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
+                      color: AppColors.background,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(
-                      Icons.close_rounded,
-                      size: 20,
-                      color: Color(0xFF64748B),
-                    ),
+                    child: Icon(Icons.close_rounded, size: 20, color: AppColors.textColor.withOpacity(0.6)),
                   ),
                 ),
                 const SizedBox(width: 16),
-                const Text(
-                  'Artist Details',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1F2937),
-                  ),
-                ),
+                Text('Artist Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textColor)),
               ],
             ),
           ),
@@ -1683,7 +1613,7 @@ class ArtistDetailsBottomSheet extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFF1F5F9), width: 2),
+                      border: Border.all(color: AppColors.accentColor, width: 2),
                     ),
                     child: Row(
                       children: [
@@ -1745,7 +1675,7 @@ class ArtistDetailsBottomSheet extends StatelessWidget {
                         Container(
                           width: 1,
                           height: 60,
-                          color: const Color(0xFFF1F5F9),
+                          color: AppColors.accentColor,
                         ),
                         Expanded(
                           child: Column(
@@ -1793,7 +1723,7 @@ class ArtistDetailsBottomSheet extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
+                        color: AppColors.background,
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
@@ -1813,7 +1743,7 @@ class ArtistDetailsBottomSheet extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFFF1F5F9), width: 2),
+                        border: Border.all(color: AppColors.accentColor, width: 2),
                       ),
                       child: Row(
                         children: [
@@ -1926,12 +1856,10 @@ class ArtistDetailsBottomSheet extends StatelessWidget {
     final lowerCategory = category.toLowerCase();
     if (lowerCategory.contains('singer')) return Icons.mic_rounded;
     if (lowerCategory.contains('music')) return Icons.music_note_rounded;
-    if (lowerCategory.contains('painter') || lowerCategory.contains('artist'))
-      return Icons.brush_rounded;
+    if (lowerCategory.contains('painter')) return Icons.brush_rounded;
     if (lowerCategory.contains('dancer')) return Icons.directions_run_rounded;
     if (lowerCategory.contains('photo')) return Icons.camera_alt_rounded;
-    if (lowerCategory.contains('actor') || lowerCategory.contains('performer'))
-      return Icons.theater_comedy_rounded;
+    if (lowerCategory.contains('actor')) return Icons.theater_comedy_rounded;
     if (lowerCategory.contains('designer')) return Icons.palette_rounded;
     if (lowerCategory.contains('writer')) return Icons.edit_rounded;
     return Icons.person_rounded;
@@ -1940,16 +1868,14 @@ class ArtistDetailsBottomSheet extends StatelessWidget {
   Color _getCategoryColor(String? category) {
     if (category == null) return AppColors.primaryColor;
     final lowerCategory = category.toLowerCase();
-    if (lowerCategory.contains('singer')) return Colors.blue.shade600;
-    if (lowerCategory.contains('music')) return Colors.green.shade600;
-    if (lowerCategory.contains('painter') || lowerCategory.contains('artist'))
-      return Colors.orange.shade600;
-    if (lowerCategory.contains('dancer')) return Colors.purple.shade600;
-    if (lowerCategory.contains('photo')) return Colors.red.shade600;
-    if (lowerCategory.contains('actor') || lowerCategory.contains('performer'))
-      return Colors.teal.shade600;
-    if (lowerCategory.contains('designer')) return Colors.pink.shade600;
-    if (lowerCategory.contains('writer')) return Colors.brown.shade600;
+    if (lowerCategory.contains('singer')) return Colors.blue;
+    if (lowerCategory.contains('music')) return Colors.green;
+    if (lowerCategory.contains('painter')) return Colors.orange;
+    if (lowerCategory.contains('dancer')) return Colors.purple;
+    if (lowerCategory.contains('photo')) return Colors.red;
+    if (lowerCategory.contains('actor')) return Colors.teal;
+    if (lowerCategory.contains('designer')) return Colors.pink;
+    if (lowerCategory.contains('writer')) return Colors.brown;
     return AppColors.primaryColor;
   }
 }
@@ -1978,10 +1904,11 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 20,
         fontWeight: FontWeight.bold,
-        color: Color(0xFF1F2937),
+        color: AppColors.textColor,
+        fontFamily: 'Playfair',
       ),
     );
   }
