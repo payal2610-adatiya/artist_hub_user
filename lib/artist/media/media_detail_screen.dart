@@ -1,3 +1,4 @@
+// lib/artist/media/media_detail_screen.dart
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:video_player/video_player.dart';
@@ -9,15 +10,16 @@ import 'package:artist_hub/models/media_model.dart';
 import 'package:artist_hub/utils/helpers.dart';
 
 class MediaDetailScreen extends StatefulWidget {
-  final MediaModel media;
+  final Map<String, dynamic> arguments;
 
-  const MediaDetailScreen({super.key, required this.media});
+  const MediaDetailScreen({super.key, required this.arguments});
 
   @override
   State<MediaDetailScreen> createState() => _MediaDetailScreenState();
 }
 
 class _MediaDetailScreenState extends State<MediaDetailScreen> {
+  late MediaModel _media;
   late VideoPlayerController _videoController;
   bool _isVideoInitialized = false;
   bool _isLiked = false;
@@ -25,14 +27,20 @@ class _MediaDetailScreenState extends State<MediaDetailScreen> {
   int _commentCount = 0;
   int _shareCount = 0;
   bool _isLoading = true;
+  bool _isOwnMedia = false;
 
   @override
   void initState() {
     super.initState();
-    _likeCount = widget.media.likeCount;
+    _media = MediaModel.fromJson(widget.arguments['media']);
+    _isOwnMedia = widget.arguments['isOwnMedia'] ?? false;
+    _likeCount = _media.likeCount;
+    _commentCount = _media.commentCount;
+    _shareCount = _media.shareCount;
+
     _loadMediaDetails();
 
-    if (widget.media.isVideo) {
+    if (_media.isVideo) {
       _initializeVideoPlayer();
     }
   }
@@ -41,30 +49,50 @@ class _MediaDetailScreenState extends State<MediaDetailScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Load additional media stats (likes, comments, shares)
-      // This would require additional API endpoints
-      // For now, we'll use the data from the media model
+      // Load fresh media details
+      final result = await ApiService.getMediaDetails(_media.id);
+
+      if (result['success'] == true && result['data'] != null) {
+        final mediaData = result['data'];
+        if (mediaData is List && mediaData.isNotEmpty) {
+          final updatedMedia = MediaModel.fromJson(mediaData[0]);
+          setState(() {
+            _likeCount = updatedMedia.likeCount;
+            _commentCount = updatedMedia.commentCount;
+            _shareCount = updatedMedia.shareCount;
+            _media.caption = updatedMedia.caption;
+          });
+        }
+      }
 
       // Check if current user has liked this media
       final userId = SharedPref.getUserId();
       if (userId.isNotEmpty) {
-        // Check like status (would need API endpoint)
+        // You would need an API endpoint to check like status
+        // For now, we'll assume not liked
       }
 
     } catch (e) {
-      // Silently fail
+      print('Error loading media details: $e');
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
   Future<void> _initializeVideoPlayer() async {
-    _videoController = VideoPlayerController.network(widget.media.mediaUrl)
-      ..initialize().then((_) {
+    _videoController = VideoPlayerController.networkUrl(
+      Uri.parse(_media.mediaUrl),
+    );
+
+    await _videoController.initialize().then((_) {
+      if (mounted) {
         setState(() {
           _isVideoInitialized = true;
         });
-      });
+      }
+    }).catchError((error) {
+      print('Error initializing video player: $error');
+    });
   }
 
   Future<void> _toggleLike() async {
@@ -80,14 +108,19 @@ class _MediaDetailScreenState extends State<MediaDetailScreen> {
     try {
       final result = await ApiService.toggleLike(
         userId: int.parse(userId),
-        mediaId: widget.media.id,
+        mediaId: _media.id,
       );
 
       if (result['success'] == true) {
-        setState(() {
-          _isLiked = !_isLiked;
-          _likeCount = result['data']?['total_likes'] ?? _likeCount;
-        });
+        final data = result['data'];
+        if (data != null) {
+          setState(() {
+            _isLiked = data['like_status'] == 'liked';
+            _likeCount = data['total_likes'] ?? _likeCount;
+          });
+
+          Helpers.showSnackbar(context, 'Post ${_isLiked ? 'liked' : 'unliked'}');
+        }
       }
     } catch (e) {
       Helpers.showSnackbar(context, 'Failed to like', isError: true);
@@ -99,31 +132,61 @@ class _MediaDetailScreenState extends State<MediaDetailScreen> {
     Helpers.showSnackbar(context, 'Share functionality coming soon');
   }
 
-  void _viewComments() {
+  Future<void> _viewComments() async {
     // Navigate to comments screen
     Helpers.showSnackbar(context, 'Comments coming soon');
   }
 
-  void _deleteMedia() async {
-    final confirmed = await Helpers.showConfirmationDialog(
-      context,
-      'Delete Media',
-      'Are you sure you want to delete this media? This action cannot be undone.',
+  Future<void> _deleteMedia() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Media'),
+        content: const Text('Are you sure you want to delete this media? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.errorColor),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
     );
 
-    if (!confirmed) return;
+    if (confirmed != true) return;
 
     final userId = SharedPref.getUserId();
     if (userId.isEmpty) {
-      Helpers.showSnackbar(context, 'User not found', isError: true);
+      Helpers.showSnackbar(context, 'Please login first', isError: true);
       return;
     }
 
     final hasInternet = await Helpers.checkInternetBeforeApiCall(context);
     if (!hasInternet) return;
 
-    // Note: You'll need to add a delete media API endpoint
-    Helpers.showSnackbar(context, 'Delete functionality coming soon');
+    try {
+      final result = await ApiService.deleteArtistMedia(
+        mediaId: _media.id,
+        artistId: int.parse(userId),
+      );
+
+      if (result['success'] == true) {
+        Helpers.showSnackbar(context, 'Media deleted successfully');
+        Navigator.pop(context, true); // Return success
+      } else {
+        Helpers.showSnackbar(
+          context,
+          result['message'] ?? 'Failed to delete media',
+          isError: true,
+        );
+      }
+    } catch (e) {
+      Helpers.showSnackbar(context, 'Error: $e', isError: true);
+    }
   }
 
   @override
@@ -138,7 +201,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen> {
 
             // Media content
             Expanded(
-              child: _buildMediaContent(),
+              child: _isLoading ? const LoadingWidget() : _buildMediaContent(),
             ),
 
             // Media info and actions
@@ -160,7 +223,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen> {
           ),
           Expanded(
             child: Text(
-              widget.media.artistName,
+              widget.arguments['artistName'] ?? 'Media',
               style: const TextStyle(
                 color: AppColors.white,
                 fontWeight: FontWeight.w500,
@@ -168,25 +231,21 @@ class _MediaDetailScreenState extends State<MediaDetailScreen> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: AppColors.white),
-            onPressed: () {
-              _showMoreOptions();
-            },
-          ),
+          if (_isOwnMedia)
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: _deleteMedia,
+              tooltip: 'Delete Media',
+            ),
         ],
       ),
     );
   }
 
   Widget _buildMediaContent() {
-    if (_isLoading) {
-      return const LoadingWidget();
-    }
-
     return GestureDetector(
       onTap: () {
-        if (widget.media.isVideo && _isVideoInitialized) {
+        if (_media.isVideo && _isVideoInitialized) {
           setState(() {
             if (_videoController.value.isPlaying) {
               _videoController.pause();
@@ -196,63 +255,68 @@ class _MediaDetailScreenState extends State<MediaDetailScreen> {
           });
         }
       },
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Media display
-          if (widget.media.isImage)
-            CachedNetworkImage(
-              imageUrl: widget.media.mediaUrl,
-              width: double.infinity,
-              fit: BoxFit.contain,
-              placeholder: (context, url) => Container(
-                color: AppColors.black,
-                child: const Center(
-                  child: CircularProgressIndicator(
-                    color: AppColors.primaryColor,
-                  ),
+      child: Center(
+        child: _media.isImage
+            ? InteractiveViewer(
+          panEnabled: true,
+          boundaryMargin: const EdgeInsets.all(20),
+          minScale: 0.5,
+          maxScale: 4,
+          child: CachedNetworkImage(
+            imageUrl: _media.mediaUrl,
+            fit: BoxFit.contain,
+            placeholder: (context, url) => Container(
+              color: AppColors.black,
+              child: const Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.primaryColor,
                 ),
-              ),
-              errorWidget: (context, url, error) => Container(
-                color: AppColors.black,
-                child: const Center(
-                  child: Icon(
-                    Icons.broken_image,
-                    color: AppColors.white,
-                    size: 48,
-                  ),
-                ),
-              ),
-            )
-          else if (widget.media.isVideo && _isVideoInitialized)
-            VideoPlayer(_videoController)
-          else if (widget.media.isVideo)
-              Container(
-                color: AppColors.black,
-                child: const Center(
-                  child: CircularProgressIndicator(
-                    color: AppColors.primaryColor,
-                  ),
-                ),
-              ),
-
-          // Play/pause button for video
-          if (widget.media.isVideo && _isVideoInitialized)
-            AnimatedOpacity(
-              opacity: _videoController.value.isPlaying ? 0 : 1,
-              duration: const Duration(milliseconds: 300),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.play_arrow,
-                  size: 64,
-                  color: AppColors.white,
-                ),
-                onPressed: () {
-                  _videoController.play();
-                },
               ),
             ),
-        ],
+            errorWidget: (context, url, error) => Container(
+              color: AppColors.black,
+              child: const Center(
+                child: Icon(
+                  Icons.broken_image,
+                  color: AppColors.white,
+                  size: 48,
+                ),
+              ),
+            ),
+          ),
+        )
+            : _media.isVideo && _isVideoInitialized
+            ? Stack(
+          alignment: Alignment.center,
+          children: [
+            VideoPlayer(_videoController),
+            if (!_videoController.value.isPlaying)
+              Icon(
+                Icons.play_arrow,
+                size: 64,
+                color: AppColors.white.withOpacity(0.7),
+              ),
+          ],
+        )
+            : _media.isVideo
+            ? Container(
+          color: AppColors.black,
+          child: const Center(
+            child: CircularProgressIndicator(
+              color: AppColors.primaryColor,
+            ),
+          ),
+        )
+            : Container(
+          color: AppColors.black,
+          child: const Center(
+            child: Icon(
+              Icons.broken_image,
+              color: AppColors.white,
+              size: 48,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -270,48 +334,47 @@ class _MediaDetailScreenState extends State<MediaDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Stats row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildStatItem(Icons.favorite, _likeCount.toString(), _isLiked ? Colors.red : null),
+              _buildStatItem(Icons.comment, _commentCount.toString(), null),
+              _buildStatItem(Icons.share, _shareCount.toString(), null),
+              _buildStatItem(Icons.visibility, '0', null), // View count if available
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
           // Actions row
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              Row(
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      _isLiked ? Icons.favorite : Icons.favorite_border,
-                      color: _isLiked ? Colors.red : AppColors.white,
-                    ),
-                    onPressed: _toggleLike,
-                  ),
-                  Text(
-                    _likeCount.toString(),
-                    style: const TextStyle(color: AppColors.white),
-                  ),
-                  const SizedBox(width: 20),
-                  IconButton(
-                    icon: const Icon(Icons.comment_outlined, color: AppColors.white),
-                    onPressed: _viewComments,
-                  ),
-                  Text(
-                    _commentCount.toString(),
-                    style: const TextStyle(color: AppColors.white),
-                  ),
-                  const SizedBox(width: 20),
-                  IconButton(
-                    icon: const Icon(Icons.share_outlined, color: AppColors.white),
-                    onPressed: _shareMedia,
-                  ),
-                  Text(
-                    _shareCount.toString(),
-                    style: const TextStyle(color: AppColors.white),
-                  ),
-                ],
+              IconButton(
+                icon: Icon(
+                  _isLiked ? Icons.favorite : Icons.favorite_border,
+                  color: _isLiked ? Colors.red : AppColors.white,
+                ),
+                onPressed: _toggleLike,
+                tooltip: 'Like',
+              ),
+              IconButton(
+                icon: const Icon(Icons.comment_outlined, color: AppColors.white),
+                onPressed: _viewComments,
+                tooltip: 'Comments',
+              ),
+              IconButton(
+                icon: const Icon(Icons.share_outlined, color: AppColors.white),
+                onPressed: _shareMedia,
+                tooltip: 'Share',
               ),
               IconButton(
                 icon: const Icon(Icons.bookmark_border, color: AppColors.white),
                 onPressed: () {
                   // Save to favorites
                 },
+                tooltip: 'Save',
               ),
             ],
           ),
@@ -319,23 +382,29 @@ class _MediaDetailScreenState extends State<MediaDetailScreen> {
           const SizedBox(height: 12),
 
           // Caption
-          if (widget.media.caption.isNotEmpty)
-            Text(
-              widget.media.caption,
-              style: const TextStyle(
-                color: AppColors.white,
-                fontSize: 14,
+          if (_media.caption.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(
+                _media.caption,
+                style: const TextStyle(
+                  color: AppColors.white,
+                  fontSize: 14,
+                ),
               ),
             ),
 
           const SizedBox(height: 8),
 
           // Upload date
-          Text(
-            Helpers.formatDateTime(widget.media.createdAt),
-            style: const TextStyle(
-              color: AppColors.lightGrey,
-              fontSize: 12,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              Helpers.timeAgo(_media.createdAt.toIso8601String()),
+              style: const TextStyle(
+                color: AppColors.lightGrey,
+                fontSize: 12,
+              ),
             ),
           ),
         ],
@@ -343,68 +412,26 @@ class _MediaDetailScreenState extends State<MediaDetailScreen> {
     );
   }
 
-  void _showMoreOptions() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.card,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
+  Widget _buildStatItem(IconData icon, String count, Color? color) {
+    return Column(
+      children: [
+        Icon(icon, color: color ?? AppColors.white, size: 20),
+        const SizedBox(height: 4),
+        Text(
+          count,
+          style: const TextStyle(
+            color: AppColors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
         ),
-      ),
-      builder: (context) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 16),
-            const Text(
-              'Options',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textColor,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: const Icon(Icons.download, color: AppColors.textColor),
-              title: const Text('Download'),
-              onTap: () {
-                Navigator.pop(context);
-                // Implement download
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.report_problem, color: AppColors.textColor),
-              title: const Text('Report'),
-              onTap: () {
-                Navigator.pop(context);
-                // Implement report
-              },
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.delete_outline, color: AppColors.errorColor),
-              title: const Text(
-                'Delete',
-                style: TextStyle(color: AppColors.errorColor),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _deleteMedia();
-              },
-            ),
-            const SizedBox(height: 16),
-          ],
-        );
-      },
+      ],
     );
   }
 
   @override
   void dispose() {
-    if (widget.media.isVideo) {
+    if (_media.isVideo && _isVideoInitialized) {
       _videoController.dispose();
     }
     super.dispose();

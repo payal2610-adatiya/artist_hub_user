@@ -90,6 +90,7 @@ class _ArtistProfileScreenState extends State<ArtistProfileScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        backgroundColor: AppColors.primaryColor,
         title: const Text('Artist Profile'),
         actions: [
           IconButton(
@@ -140,7 +141,6 @@ class _ArtistProfileScreenState extends State<ArtistProfileScreen> {
           CustomButton(
             text: 'Retry',
             onPressed: _loadProfile,
-            width: 150,
           ),
         ],
       ),

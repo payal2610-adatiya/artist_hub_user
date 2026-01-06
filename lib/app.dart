@@ -5,6 +5,7 @@ import 'package:artist_hub/splash/splash_screen.dart';
 import 'package:artist_hub/core/routes/app_routes.dart';
 import 'package:artist_hub/core/routes/route_generator.dart';
 
+
 class App extends StatefulWidget {
   const App({super.key});
 
@@ -31,6 +32,7 @@ class _AppState extends State<App> {
   Widget build(BuildContext context) {
     return StreamBuilder<bool>(
       stream: _connectivityService.connectionStream,
+      initialData: true,
       builder: (context, snapshot) {
         final isConnected = snapshot.data ?? true;
 
@@ -40,30 +42,8 @@ class _AppState extends State<App> {
           theme: ThemeData(
             primaryColor: AppColors.primaryColor,
             scaffoldBackgroundColor: AppColors.backgroundColor,
-            appBarTheme: const AppBarTheme(
-              elevation: 0,
-              centerTitle: true,
-            ),
             fontFamily: 'Inter',
-            textTheme: const TextTheme(
-              headlineMedium: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textColor,
-              ),
-              titleMedium: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textColor,
-              ),
-              bodyMedium: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                color: AppColors.textColor,
-              ),
-            ),
           ),
-          initialRoute: AppRoutes.splash,
           onGenerateRoute: RouteGenerator.generateRoute,
           home: isConnected
               ? const SplashScreen()
@@ -89,17 +69,12 @@ class _AppState extends State<App> {
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textColor,
                 ),
               ),
               const SizedBox(height: 12),
               const Text(
                 'Please check your internet connection and try again.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: AppColors.darkGrey,
-                ),
               ),
               const SizedBox(height: 32),
               ElevatedButton(
@@ -107,19 +82,9 @@ class _AppState extends State<App> {
                   final isConnected =
                   await _connectivityService.checkConnection();
                   if (isConnected && mounted) {
-                    Navigator.pushReplacementNamed(
-                        context, AppRoutes.splash);
+                    setState(() {});
                   }
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryColor,
-                  foregroundColor: AppColors.white,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 32, vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
                 child: const Text('Retry Connection'),
               ),
             ],

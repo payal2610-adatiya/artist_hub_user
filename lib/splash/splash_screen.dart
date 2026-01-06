@@ -34,9 +34,19 @@ class _SplashScreenState extends State<SplashScreen> {
     } else {
       final userRole = SharedPref.getUserRole();
       if (userRole == 'artist') {
-        Navigator.pushReplacementNamed(context, AppRoutes.artistDashboard);
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.artistDashboard,
+              (route) => false,
+        );
+
       } else {
-        Navigator.pushReplacementNamed(context, AppRoutes.customerDashboard);
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.customerDashboard,
+              (route) => false,
+        );
+
       }
     }
   }

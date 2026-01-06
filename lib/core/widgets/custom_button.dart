@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:artist_hub/core/constants/app_colors.dart';
+
+import '../constants/app_colors.dart';
 
 class CustomButton extends StatelessWidget {
   final String text;
@@ -7,37 +8,31 @@ class CustomButton extends StatelessWidget {
   final bool isLoading;
   final Color? backgroundColor;
   final Color? textColor;
-  final double? width;
-  final double? height;
-  final double borderRadius;
+  final bool fullWidth; // Add this parameter
 
   const CustomButton({
-    super.key,
+    Key? key,
     required this.text,
     required this.onPressed,
     this.isLoading = false,
     this.backgroundColor,
     this.textColor,
-    this.width,
-    this.height = 50,
-    this.borderRadius = 12,
-  });
+    this.fullWidth = true, // Default to true
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: width ?? double.infinity,
-      height: height,
+      width: fullWidth ? double.infinity : null,
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: backgroundColor ?? AppColors.primaryColor,
-          foregroundColor: textColor ?? AppColors.white,
+          foregroundColor: textColor ?? Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(borderRadius),
+            borderRadius: BorderRadius.circular(12),
           ),
-          elevation: 0,
-          disabledBackgroundColor: AppColors.grey,
         ),
         child: isLoading
             ? const SizedBox(
@@ -45,14 +40,14 @@ class CustomButton extends StatelessWidget {
           height: 20,
           child: CircularProgressIndicator(
             strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
           ),
         )
             : Text(
           text,
           style: const TextStyle(
             fontSize: 16,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.bold,
           ),
         ),
       ),

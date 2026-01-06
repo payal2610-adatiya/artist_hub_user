@@ -141,7 +141,6 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
             CustomButton(
               text: 'Retry',
               onPressed: _loadArtistDetails,
-              width: 150,
             ),
           ],
         ),

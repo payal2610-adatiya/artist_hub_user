@@ -440,7 +440,6 @@ class _AddReviewScreenState extends State<AddReviewScreen> {
             CustomButton(
               text: 'Go Back',
               onPressed: () => Navigator.pop(context),
-              width: 200,
               backgroundColor: AppColors.primaryColor,
             ),
           ],

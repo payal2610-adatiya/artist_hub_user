@@ -1,3 +1,5 @@
+//
+// lib/models/media_model.dart
 class MediaModel {
   int id;
   int artistId;
@@ -6,6 +8,8 @@ class MediaModel {
   String mediaUrl;
   String caption;
   int likeCount;
+  int commentCount;
+  int shareCount;
   DateTime createdAt;
 
   MediaModel({
@@ -16,6 +20,8 @@ class MediaModel {
     required this.mediaUrl,
     required this.caption,
     required this.likeCount,
+    required this.commentCount,
+    required this.shareCount,
     required this.createdAt,
   });
 
@@ -23,12 +29,14 @@ class MediaModel {
     return MediaModel(
       id: int.parse(json['id'].toString()),
       artistId: int.parse(json['artist_id'].toString()),
-      artistName: json['artist_name'] ?? '',
-      mediaType: json['media_type'] ?? '',
+      artistName: json['artist_name'] ?? 'Unknown Artist',
+      mediaType: json['media_type'] ?? 'image',
       mediaUrl: json['media_url'] ?? '',
       caption: json['caption'] ?? '',
-      likeCount: int.parse((json['like_count'] ?? 0).toString()),
-      createdAt: DateTime.parse(json['created_at'] ?? DateTime.now().toString()),
+      likeCount: int.parse((json['like_count'] ?? json['total_likes'] ?? '0').toString()),
+      commentCount: int.parse((json['comment_count'] ?? json['total_comments'] ?? '0').toString()),
+      shareCount: int.parse((json['share_count'] ?? json['total_shares'] ?? '0').toString()),
+      createdAt: DateTime.parse(json['created_at'] ?? DateTime.now().toIso8601String()),
     );
   }
 
@@ -41,6 +49,8 @@ class MediaModel {
       'media_url': mediaUrl,
       'caption': caption,
       'like_count': likeCount,
+      'comment_count': commentCount,
+      'share_count': shareCount,
       'created_at': createdAt.toIso8601String(),
     };
   }

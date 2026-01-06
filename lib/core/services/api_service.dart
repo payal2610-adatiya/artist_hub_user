@@ -18,6 +18,112 @@ class ApiService {
       };
     }
   }
+  // Update your ApiService with these methods
+  static Future<Map<String, dynamic>> deleteArtistMedia({
+    required int mediaId,
+    required int artistId,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiEndpoints.baseUrl}delete_artist_media.php'),
+        body: {
+          'media_id': mediaId.toString(),
+          'artist_id': artistId.toString(),
+        },
+      ).timeout(timeout);
+
+      final data = _parseResponse(response);
+
+      if (data['status'] == true) {
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Media deleted successfully',
+          'data': data['data'],
+        };
+      }
+
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Failed to delete media',
+        'data': null,
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'data': null,
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateMediaCaption({
+    required int mediaId,
+    required int artistId,
+    required String caption,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiEndpoints.baseUrl}update_artist_media.php'),
+        body: {
+          'media_id': mediaId.toString(),
+          'artist_id': artistId.toString(),
+          'caption': caption,
+        },
+      ).timeout(timeout);
+
+      final data = _parseResponse(response);
+
+      if (data['status'] == true) {
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Caption updated successfully',
+          'data': data['data'],
+        };
+      }
+
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Failed to update caption',
+        'data': null,
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'data': null,
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> getMediaDetails(int mediaId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiEndpoints.baseUrl}view_artist_media_by_id.php?media_id=$mediaId'),
+      ).timeout(timeout);
+
+      final data = _parseResponse(response);
+
+      if (data['status'] == true) {
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Media details fetched successfully',
+          'data': data['data'],
+        };
+      }
+
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Failed to fetch media details',
+        'data': null,
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'data': null,
+      };
+    }
+  }
 
   // ============ AUTHENTICATION ============
   static Future<Map<String, dynamic>> login({
@@ -252,6 +358,41 @@ class ApiService {
   }
 
   // ============ ARTIST MEDIA ============
+  // In your getArtistMedia method in ApiService:
+  static Future<Map<String, dynamic>> getArtistMedia({required int artistId}) async {
+    try {
+      print('Fetching media for artist ID: $artistId');
+      final response = await http.get(
+        Uri.parse('${ApiEndpoints.baseUrl}view_artist_media.php?artist_id=$artistId'),
+      ).timeout(timeout);
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      final data = _parseResponse(response);
+
+      if (data['status'] == true) {
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Media fetched successfully',
+          'data': data['data'] ?? data,
+        };
+      }
+
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Failed to fetch media',
+        'data': null,
+      };
+    } catch (e) {
+      print('Error fetching media: $e');
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'data': null,
+      };
+    }
+  }
   static Future<Map<String, dynamic>> addArtistMedia({
     required int artistId,
     required String mediaType,
@@ -301,35 +442,6 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> getArtistMedia({required int artistId}) async {
-    try {
-      final response = await http.get(
-        Uri.parse('${ApiEndpoints.getMedia}?artist_id=$artistId'),
-      ).timeout(timeout);
-
-      final data = _parseResponse(response);
-
-      if (data['status'] == true) {
-        return {
-          'success': true,
-          'message': data['message'] ?? 'Media fetched successfully',
-          'data': data['data'] ?? data,
-        };
-      }
-
-      return {
-        'success': false,
-        'message': data['message'] ?? 'Failed to fetch media',
-        'data': null,
-      };
-    } catch (e) {
-      return {
-        'success': false,
-        'message': 'Network error: $e',
-        'data': null,
-      };
-    }
-  }
 
   // ============ BOOKINGS ============
   static Future<Map<String, dynamic>> addBooking({
