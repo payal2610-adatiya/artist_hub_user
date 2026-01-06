@@ -8,6 +8,8 @@ import 'package:artist_hub/core/widgets/loading_widget.dart';
 import 'package:artist_hub/models/artist_model.dart';
 import 'package:artist_hub/utils/helpers.dart';
 
+import 'edit_artist_profile_screen.dart';
+
 class ArtistProfileScreen extends StatefulWidget {
   const ArtistProfileScreen({super.key});
 
@@ -74,13 +76,8 @@ class _ArtistProfileScreenState extends State<ArtistProfileScreen> {
   }
 
   void _navigateToEditProfile() {
-    Navigator.pushNamed(
-      context,
-      AppRoutes.editArtistProfile,
-      arguments: {
-        'artist': _artist,
-        'profile': _profile,
-      },
+    Navigator.pushReplacement(
+      context, MaterialPageRoute(builder: (context) => const EditArtistProfileScreen())
     );
   }
 

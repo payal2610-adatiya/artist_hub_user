@@ -192,7 +192,8 @@ class _EditArtistProfileScreenState extends State<EditArtistProfileScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(_isNewProfile ? 'Create Profile' : 'Edit Profile'),
+        backgroundColor: AppColors.primaryColor,
+        title: Text(_isNewProfile ? 'Create Profile' : 'Edit Profile',style: TextStyle(color: Colors.white),),
         actions: [
           if (!_isNewProfile)
             IconButton(
