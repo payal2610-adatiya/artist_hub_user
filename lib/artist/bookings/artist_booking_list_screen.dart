@@ -210,16 +210,15 @@ class _ArtistBookingListScreenState extends State<ArtistBookingListScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('My Bookings'),
+        iconTheme: IconThemeData(color: Colors.white),
+        backgroundColor: AppColors.primaryColor,
+        title: const Text('My Bookings',style: TextStyle(color: Colors.white),),
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: _showSearchDialog,
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadBookings,
-          ),
+
         ],
       ),
       body: _isLoading

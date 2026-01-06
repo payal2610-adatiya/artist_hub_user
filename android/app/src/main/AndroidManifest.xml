@@ -4,8 +4,8 @@
     <application
         android:label="artist_hub"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
-        android:enableOnBackInvokedCallback="true" <!-- Add this line -->
+        android:icon="@mipmap/ic_launcher"
+        android:enableOnBackInvokedCallback="true"
         android:requestLegacyExternalStorage="true"> <!-- Add this for file access -->
         <activity
             android:name=".MainActivity"

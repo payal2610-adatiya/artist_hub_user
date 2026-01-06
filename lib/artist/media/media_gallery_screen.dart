@@ -184,56 +184,23 @@ class _MediaGalleryScreenState extends State<MediaGalleryScreen> {
     }
   }
 
-  Widget _buildAppBar() {
-    return AppBar(
-      title: Text(
-        widget.isOwnGallery ? 'My Portfolio' : widget.artistName,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      backgroundColor: AppColors.primaryColor,
-      elevation: 0,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.refresh),
-          onPressed: _loadMedia,
-          tooltip: 'Refresh',
-        ),
-        if (widget.isOwnGallery)
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: _uploadNewMedia,
-            tooltip: 'Upload Media',
-          ),
-      ],
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar:AppBar(
+        iconTheme: IconThemeData(color: Colors.white),
+
         title: Text(
           widget.isOwnGallery ? 'My Portfolio' : widget.artistName,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: Colors.white),
         ),
         backgroundColor: AppColors.primaryColor,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadMedia,
-            tooltip: 'Refresh',
-          ),
-          if (widget.isOwnGallery)
-            IconButton(
-              icon: const Icon(Icons.add),
-              onPressed: _uploadNewMedia,
-              tooltip: 'Upload Media',
-            ),
-        ],
+
       ),
       body: _isLoading
           ? const LoadingWidget(message: 'Loading media...')

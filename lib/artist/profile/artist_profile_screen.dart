@@ -280,30 +280,36 @@ class _ArtistProfileScreenState extends State<ArtistProfileScreen> {
 
           // Rating and experience
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildInfoItem(
-                icon: Icons.star,
-                label: 'Rating',
-                value: (_artist?.avgRating ?? 0).toStringAsFixed(1),
-                color: AppColors.secondaryColor,
+              Expanded(
+                child: _buildInfoItem(
+                  icon: Icons.star,
+                  label: 'Rating',
+                  value: (_artist?.avgRating ?? 0).toStringAsFixed(1),
+                  color: AppColors.secondaryColor,
+                ),
               ),
-              _buildInfoItem(
-                icon: Icons.work,
-                label: 'Experience',
-                value: _profile?['experience'] ?? 'Not set',
-                color: AppColors.gold,
+              Expanded(
+                child: _buildInfoItem(
+                  icon: Icons.work,
+                  label: 'Experience',
+                  value: _profile?['experience'] ?? 'Not set',
+                  color: AppColors.gold,
+                ),
               ),
-              _buildInfoItem(
-                icon: Icons.currency_rupee,
-                label: 'Price',
-                value: _profile?['price'] != null
-                    ? '₹${_profile!['price']}'
-                    : 'Not set',
-                color: AppColors.successColor,
+              Expanded(
+                child: _buildInfoItem(
+                  icon: Icons.currency_rupee,
+                  label: 'Price',
+                  value: _profile?['price'] != null
+                      ? '₹${_profile!['price']}'
+                      : 'Not set',
+                  color: AppColors.successColor,
+                ),
               ),
             ],
           ),
+
         ],
       ),
     );
@@ -622,7 +628,7 @@ class _ArtistProfileScreenState extends State<ArtistProfileScreen> {
       crossAxisCount: 2,
       crossAxisSpacing: 12,
       mainAxisSpacing: 12,
-      childAspectRatio: 1.5,
+      childAspectRatio: 1.2,
       children: [
         _buildStatCard(
           title: 'Total Bookings',
@@ -674,6 +680,7 @@ class _ArtistProfileScreenState extends State<ArtistProfileScreen> {
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min, // ⭐ FIX
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -687,21 +694,22 @@ class _ArtistProfileScreenState extends State<ArtistProfileScreen> {
                 ),
                 child: Icon(icon, size: 20, color: color),
               ),
-              const Spacer(),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
             value,
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 22, // slightly smaller
               fontWeight: FontWeight.w700,
               color: color,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis, // ⭐ prevents overflow
             style: const TextStyle(
               fontSize: 12,
               color: AppColors.darkGrey,
@@ -711,6 +719,7 @@ class _ArtistProfileScreenState extends State<ArtistProfileScreen> {
       ),
     );
   }
+
 
   Widget _buildActionButtons() {
     return Column(
