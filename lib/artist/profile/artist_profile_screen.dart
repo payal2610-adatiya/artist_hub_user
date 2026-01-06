@@ -738,9 +738,25 @@ class _ArtistProfileScreenState extends State<ArtistProfileScreen> {
           backgroundColor: AppColors.secondaryColor,
         ),
         const SizedBox(height: 12),
+// Add to _buildActionButtons() method
         OutlinedButton(
-          onPressed: () {
-            // Logout functionality
+          onPressed: () async {
+            final confirmed = await Helpers.showConfirmationDialog(
+              context,
+              'Logout',
+              'Are you sure you want to logout?',
+            );
+
+            if (!confirmed) return;
+
+            await SharedPref.clearUserData();
+            if (!mounted) return;
+
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              AppRoutes.roleSelection,
+                  (route) => false,
+            );
           },
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.errorColor,
@@ -754,8 +770,7 @@ class _ArtistProfileScreenState extends State<ArtistProfileScreen> {
             'Logout',
             style: TextStyle(fontSize: 16),
           ),
-        ),
-      ],
+        ),      ],
     );
   }
 }

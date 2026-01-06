@@ -672,12 +672,20 @@ class _ArtistDashboardScreenState extends State<ArtistDashboardScreen> {
         ),
       ],
       onTap: (index) {
+        final userId = SharedPref.getUserId();
         switch (index) {
           case 0:
           // Already on home
             break;
           case 1:
-            Navigator.pushNamed(context, AppRoutes.mediaGallery);
+            Navigator.pushNamed(
+              context,
+              AppRoutes.mediaGallery,
+              arguments: {
+                'artistId': int.parse(userId),
+                'artistName': SharedPref.getUserName(),
+              },
+            );
             break;
           case 2:
             Navigator.pushNamed(context, AppRoutes.artistBookings);
@@ -689,7 +697,6 @@ class _ArtistDashboardScreenState extends State<ArtistDashboardScreen> {
       },
     );
   }
-
   String _getTimeOfDay() {
     final hour = DateTime.now().hour;
     if (hour < 12) return 'Morning';

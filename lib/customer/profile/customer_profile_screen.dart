@@ -111,7 +111,6 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
           (route) => false,
     );
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
