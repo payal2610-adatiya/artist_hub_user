@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:artist_hub/core/constants/app_colors.dart';
-import 'package:artist_hub/core/constants/app_strings.dart';
 import 'package:artist_hub/core/routes/app_routes.dart';
 import 'package:artist_hub/core/services/api_service.dart';
 import 'package:artist_hub/core/services/shared_pref.dart';
@@ -286,7 +285,7 @@ class _ArtistProfileScreenState extends State<ArtistProfileScreen> {
               _buildInfoItem(
                 icon: Icons.star,
                 label: 'Rating',
-                value: _artist?.avgRating.toStringAsFixed(1) ?? '0.0',
+                value: (_artist?.avgRating ?? 0).toStringAsFixed(1),
                 color: AppColors.secondaryColor,
               ),
               _buildInfoItem(
