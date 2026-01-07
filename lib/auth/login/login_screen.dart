@@ -46,38 +46,59 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
-    final result = await ApiService.login(
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-      role: _selectedRole,
-    );
+    try {
+      final result = await ApiService.login(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        role: _selectedRole,
+      );
 
-    setState(() => _isLoading = false);
+      print('Login Response: $result');
 
-    if (result['success'] == true && result['data'] != null) {
-      // Save user data
-      await SharedPref.saveUserData(result['data']);
+      setState(() => _isLoading = false);
 
-      if (!mounted) return;
+      if (result['success'] == true && result['data'] != null) {
+        // Save user data
+        await SharedPref.saveUserData(result['data']);
 
-      // Navigate based on role
-      if (_selectedRole == 'artist') {
-        // Check if artist is approved
-        final userData = SharedPref.getUserData();
-        if (userData['is_approved'] == true) {
-          Navigator.pushReplacementNamed(context, AppRoutes.artistDashboard);
+        if (!mounted) return;
+
+        // Navigate based on role
+        if (_selectedRole == 'artist') {
+          // Check if artist is approved
+          final isApproved = result['data']['is_approved'];
+          bool approved = false;
+
+          if (isApproved is bool) {
+            approved = isApproved;
+          } else if (isApproved is int) {
+            approved = isApproved == 1;
+          } else if (isApproved is String) {
+            approved = isApproved == '1' || isApproved.toLowerCase() == 'true';
+          }
+
+          print('Artist approval check: $isApproved -> $approved');
+
+          if (approved) {
+            Navigator.pushNamedAndRemoveUntil(context, AppRoutes.artistDashboard,(route) => false);
+          } else {
+            Helpers.showSnackbar(
+              context,
+              'Your account is pending approval from admin',
+              isError: true,
+            );
+            // Don't clear data here, let splash screen handle it
+          }
         } else {
-          Helpers.showSnackbar(
-            context,
-            'Your account is pending approval from admin',
-            isError: true,
-          );
+          Navigator.pushNamedAndRemoveUntil(context, AppRoutes.customerDashboard,(route) => false);
         }
       } else {
-        Navigator.pushReplacementNamed(context, AppRoutes.customerDashboard);
+        Helpers.showSnackbar(context, result['message'] ?? 'Login failed', isError: true);
       }
-    } else {
-      Helpers.showSnackbar(context, result['message'] ?? 'Login failed', isError: true);
+    } catch (e) {
+      setState(() => _isLoading = false);
+      print('Login error: $e');
+      Helpers.showSnackbar(context, 'An error occurred during login', isError: true);
     }
   }
 

@@ -15,7 +15,21 @@ class SharedPref {
     await _prefs.setString('user_phone', userData['phone'] ?? '');
     await _prefs.setString('user_address', userData['address'] ?? '');
     await _prefs.setString('user_role', userData['role'] ?? '');
-    await _prefs.setBool('is_approved', userData['is_approved'] == 1);
+
+    // FIXED: Better conversion for is_approved
+    final isApproved = userData['is_approved'];
+    bool approvedBool = false;
+
+    if (isApproved is bool) {
+      approvedBool = isApproved;
+    } else if (isApproved is int) {
+      approvedBool = isApproved == 1;
+    } else if (isApproved is String) {
+      approvedBool = isApproved == '1' || isApproved.toLowerCase() == 'true';
+    }
+
+    print('Saving is_approved: $isApproved -> $approvedBool');
+    await _prefs.setBool('is_approved', approvedBool);
     await _prefs.setBool('is_logged_in', true);
   }
 
@@ -48,7 +62,9 @@ class SharedPref {
   }
 
   static bool isArtistApproved() {
-    return _prefs.getBool('is_approved') ?? false;
+    final approved = _prefs.getBool('is_approved') ?? false;
+    print('Checking artist approval: $approved');
+    return approved;
   }
 
   static Future<void> clearUserData() async {

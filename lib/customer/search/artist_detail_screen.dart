@@ -65,6 +65,7 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
       }
     } catch (e) {
       setState(() => _hasError = true);
+      print('Error loading artist details: $e');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -76,8 +77,7 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
         context,
         AppRoutes.createBooking,
         arguments: {
-          'artistId': _artist!.id,
-          'artistName': _artist!.name,
+          'artist': _artist!.toJson(), // Pass entire artist as JSON
         },
       );
     }
@@ -106,6 +106,7 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadArtistDetails,
+            tooltip: 'Refresh',
           ),
         ],
       ),
@@ -147,46 +148,58 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
       )
           : _buildContent(),
       bottomNavigationBar: _artist != null
-          ? Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          border: Border(top: BorderSide(color: AppColors.lightGrey)),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Starting from',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.darkGrey,
-                    ),
-                  ),
-                  Text(
-                    '₹${_artist!.price ?? 'Contact for price'}',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primaryColor,
-                    ),
-                  ),
-                ],
+          ? SafeArea(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            border: Border(top: BorderSide(color: AppColors.lightGrey)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 4,
+                offset: const Offset(0, -2),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: CustomButton(
-                text: 'Book Now',
-                onPressed: _bookArtist,
-                backgroundColor: AppColors.primaryColor,
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Starting from',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.darkGrey,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      '₹${_artist!.price ?? 'Contact for price'}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryColor,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 150,
+                child: CustomButton(
+                  text: 'Book Now',
+                  onPressed: _bookArtist,
+                  backgroundColor: AppColors.primaryColor,
+                ),
+              ),
+            ],
+          ),
         ),
       )
           : null,
@@ -226,6 +239,7 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
       child: Column(
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Artist avatar
               Container(
@@ -241,7 +255,7 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                 ),
                 child: Center(
                   child: Text(
-                    Helpers.getInitials(_artist!.name),
+                    Helpers.getInitials(_artist!.name ?? 'A'),
                     style: const TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.w700,
@@ -258,15 +272,17 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _artist!.name,
+                      _artist!.name ?? 'Artist',
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textColor,
                       ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
                     ),
                     const SizedBox(height: 4),
-                    if (_artist!.category != null)
+                    if (_artist!.category != null && _artist!.category!.isNotEmpty)
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -283,19 +299,21 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                             fontWeight: FontWeight.w500,
                             color: AppColors.primaryColor,
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        _buildRatingStars(_artist!.avgRating),
+                        _buildRatingStars(_artist!.avgRating ?? 0.0),
                         const SizedBox(width: 8),
                         Text(
-                          '${_artist!.avgRating.toStringAsFixed(1)} (${_artist!.totalReviews} reviews)',
+                          '${(_artist!.avgRating ?? 0.0).toStringAsFixed(1)} (${_artist!.totalReviews ?? 0} reviews)',
                           style: const TextStyle(
                             fontSize: 14,
                             color: AppColors.darkGrey,
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
@@ -311,8 +329,8 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildStatItem('Experience', _artist!.experience ?? 'N/A'),
-              _buildStatItem('Bookings', _artist!.totalReviews.toString()),
-              _buildStatItem('Posts', _artist!.totalPosts.toString()),
+              _buildStatItem('Bookings', (_artist!.totalReviews ?? 0).toString()),
+              _buildStatItem('Posts', (_artist!.totalPosts ?? 0).toString()),
             ],
           ),
         ],
@@ -321,25 +339,30 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
   }
 
   Widget _buildStatItem(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: AppColors.primaryColor,
+    return Container(
+      constraints: const BoxConstraints(minWidth: 80),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primaryColor,
+            ),
+            textAlign: TextAlign.center,
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: AppColors.darkGrey,
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.darkGrey,
+            ),
+            textAlign: TextAlign.center,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -388,6 +411,7 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 color: isSelected ? AppColors.primaryColor : AppColors.darkGrey,
               ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ),
@@ -444,19 +468,19 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
           _buildContactItem(
             icon: Icons.phone,
             label: 'Phone',
-            value: _artist!.phone,
+            value: _artist!.phone ?? 'Not available',
           ),
           const SizedBox(height: 12),
           _buildContactItem(
             icon: Icons.email,
             label: 'Email',
-            value: _artist!.email,
+            value: _artist!.email ?? 'Not available',
           ),
           const SizedBox(height: 12),
           _buildContactItem(
             icon: Icons.location_on,
             label: 'Location',
-            value: _artist!.address,
+            value: _artist!.address ?? 'Not available',
           ),
         ],
       ),
@@ -469,8 +493,12 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
     required String value,
   }) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 20, color: AppColors.primaryColor),
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Icon(icon, size: 20, color: AppColors.primaryColor),
+        ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -561,29 +589,44 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
               itemCount: _portfolio.length,
               itemBuilder: (context, index) {
                 final item = _portfolio[index];
-                return Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    image: item['media_type'] == 'image'
-                        ? DecorationImage(
-                      image: NetworkImage(item['media_url']),
-                      fit: BoxFit.cover,
+                final mediaUrl = item['media_url']?.toString() ?? '';
+                final fullUrl = mediaUrl.startsWith('http')
+                    ? mediaUrl
+                    : 'https://prakrutitech.xyz/gaurang/$mediaUrl';
+
+                return GestureDetector(
+                  onTap: () {
+                    // Optionally open full screen view
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      image: item['media_type'] == 'image' && mediaUrl.isNotEmpty
+                          ? DecorationImage(
+                        image: NetworkImage(fullUrl),
+                        fit: BoxFit.cover,
+                      )
+                          : null,
+                    ),
+                    child: item['media_type'] == 'video' || mediaUrl.isEmpty
+                        ? Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.secondaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: Icon(
+                          item['media_type'] == 'video'
+                              ? Icons.videocam
+                              : Icons.broken_image,
+                          size: 32,
+                          color: AppColors.secondaryColor,
+                        ),
+                      ),
                     )
                         : null,
                   ),
-                  child: item['media_type'] == 'video'
-                      ? Container(
-                    color: AppColors.secondaryColor.withOpacity(0.1),
-                    child: const Center(
-                      child: Icon(
-                        Icons.videocam,
-                        size: 32,
-                        color: AppColors.secondaryColor,
-                      ),
-                    ),
-                  )
-                      : null,
                 );
               },
             ),
@@ -669,6 +712,7 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
                 width: 40,
@@ -700,6 +744,7 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                         fontWeight: FontWeight.w600,
                         color: AppColors.textColor,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(

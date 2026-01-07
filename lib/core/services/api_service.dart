@@ -4,8 +4,42 @@ import 'package:http/http.dart' as http;
 import 'package:artist_hub/core/constants/api_endpoints.dart';
 
 class ApiService {
-  static const Duration timeout = Duration(seconds: 30);
+  static const String baseUrl = "https://prakrutitech.xyz/gaurang/";
 
+  static const Duration timeout = Duration(seconds: 30);
+// Add this to your Helpers class or create a test file
+  Future<void> testMediaApi() async {
+    try {
+      print('Testing Media API Endpoints...');
+
+      // Test 1: view_artist_media_by_id.php
+      final response1 = await http.get(
+        Uri.parse('https://prakrutitech.xyz/gaurang/view_artist_media_by_id.php?artist_id=26'),
+      );
+      print('Test 1 - view_artist_media_by_id.php:');
+      print('Status: ${response1.statusCode}');
+      print('Body: ${response1.body}');
+
+      // Test 2: get_media.php
+      final response2 = await http.get(
+        Uri.parse('https://prakrutitech.xyz/gaurang/get_media.php'),
+      );
+      print('\nTest 2 - get_media.php:');
+      print('Status: ${response2.statusCode}');
+      print('Body: ${response2.body}');
+
+      // Test 3: view_artist_media.php
+      final response3 = await http.get(
+        Uri.parse('https://prakrutitech.xyz/gaurang/view_artist_media.php?artist_id=26'),
+      );
+      print('\nTest 3 - view_artist_media.php:');
+      print('Status: ${response3.statusCode}');
+      print('Body: ${response3.body}');
+
+    } catch (e) {
+      print('API Test Error: $e');
+    }
+  }
   // Helper method to handle responses
   static Map<String, dynamic> _parseResponse(http.Response response) {
     try {
@@ -359,15 +393,20 @@ class ApiService {
 
   // ============ ARTIST MEDIA ============
   // In your getArtistMedia method in ApiService:
+  // In ApiService class, update these methods
+
+// Fix: Use correct endpoint for artist media
   static Future<Map<String, dynamic>> getArtistMedia({required int artistId}) async {
     try {
       print('Fetching media for artist ID: $artistId');
+
+      // Try different endpoints
       final response = await http.get(
-        Uri.parse('${ApiEndpoints.baseUrl}view_artist_media.php?artist_id=$artistId'),
+        Uri.parse('${baseUrl}view_artist_media_by_id.php?artist_id=$artistId'),
       ).timeout(timeout);
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      print('Media API Response: ${response.statusCode}');
+      print('Media API Body: ${response.body}');
 
       final data = _parseResponse(response);
 
@@ -375,21 +414,83 @@ class ApiService {
         return {
           'success': true,
           'message': data['message'] ?? 'Media fetched successfully',
-          'data': data['data'] ?? data,
+          'data': data['data'] ?? [],
         };
       }
 
       return {
         'success': false,
         'message': data['message'] ?? 'Failed to fetch media',
-        'data': null,
+        'data': [],
       };
     } catch (e) {
-      print('Error fetching media: $e');
+      print('Media API Error: $e');
       return {
         'success': false,
         'message': 'Network error: $e',
-        'data': null,
+        'data': [],
+      };
+    }
+  }
+
+// Alternative: Try get_media.php endpoint
+  static Future<Map<String, dynamic>> getAllMedia() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${baseUrl}get_media.php'),
+      ).timeout(timeout);
+
+      final data = _parseResponse(response);
+
+      if (data['status'] == true) {
+        return {
+          'success': true,
+          'message': data['message'] ?? 'All media fetched successfully',
+          'data': data['data'] ?? [],
+        };
+      }
+
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Failed to fetch media',
+        'data': [],
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'data': [],
+      };
+    }
+  }
+
+// Get media by specific media ID
+  static Future<Map<String, dynamic>> getMediaById(int mediaId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${baseUrl}view_artist_media_by_id.php?media_id=$mediaId'),
+      ).timeout(timeout);
+
+      final data = _parseResponse(response);
+
+      if (data['status'] == true) {
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Media fetched successfully',
+          'data': data['data'] ?? [],
+        };
+      }
+
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Failed to fetch media',
+        'data': [],
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'data': [],
       };
     }
   }

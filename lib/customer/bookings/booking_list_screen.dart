@@ -211,14 +211,15 @@ class _BookingListScreenState extends State<BookingListScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('My Bookings'),
+        backgroundColor: AppColors.primaryColor,
+        title: const Text('My Bookings', style: TextStyle(color: AppColors.white),),
         actions: [
           IconButton(
-            icon: const Icon(Icons.search),
+            icon: const Icon(Icons.search,color: AppColors.white,),
             onPressed: _showSearchDialog,
           ),
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: AppColors.white,),
             onPressed: _loadBookings,
           ),
         ],

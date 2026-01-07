@@ -279,7 +279,8 @@ class _SearchArtistScreenState extends State<SearchArtistScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Find Artists'),
+        backgroundColor: AppColors.primaryColor,
+        title: const Text('Find Artists', style: TextStyle(color: AppColors.white),),
         actions: [
           IconButton(
             icon: const Icon(Icons.filter_list),

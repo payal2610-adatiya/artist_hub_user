@@ -82,16 +82,19 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Artist Hub'),
+        backgroundColor: AppColors.primaryColor,
+        title: const Text('Artist Hub',style: TextStyle(
+          color: AppColors.white
+        ),),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_outlined),
+            icon: const Icon(Icons.notifications_outlined, color: AppColors.white,),
             onPressed: () {
-              // Navigate to notifications
+              // Navigate to notification
             },
           ),
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: AppColors.white,),
             onPressed: _loadDashboardData,
           ),
         ],

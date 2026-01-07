@@ -71,14 +71,14 @@ class Helpers {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.primaryColor),),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.errorColor,
+              backgroundColor: AppColors.primaryColor,
             ),
-            child: const Text('Confirm'),
+            child: const Text('Confirm', style: TextStyle(color: AppColors.white),),
           ),
         ],
       ),

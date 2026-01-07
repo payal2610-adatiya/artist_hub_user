@@ -20,6 +20,25 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _initializeApp() async {
     await SharedPref.init();
+
+    print('SplashScreen: Checking user status...');
+
+    // Check for logged in users first
+    if (SharedPref.isLoggedIn()) {
+      final userRole = SharedPref.getUserRole();
+      print('SplashScreen: User is logged in as $userRole');
+
+      if (userRole == 'artist') {
+        final isApproved = SharedPref.isArtistApproved();
+        print('SplashScreen: Artist approval status: $isApproved');
+
+        if (!isApproved) {
+          print('SplashScreen: Artist not approved, clearing data...');
+          await SharedPref.clearUserData();
+        }
+      }
+    }
+
     await Future.delayed(const Duration(seconds: 2));
 
     if (!mounted) return;
@@ -27,26 +46,39 @@ class _SplashScreenState extends State<SplashScreen> {
     final isOnboardingCompleted = SharedPref.isOnboardingCompleted();
     final isLoggedIn = SharedPref.isLoggedIn();
 
+    print('SplashScreen: Onboarding completed: $isOnboardingCompleted');
+    print('SplashScreen: Logged in: $isLoggedIn');
+
     if (!isOnboardingCompleted) {
+      print('SplashScreen: Navigating to onboarding');
       Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
     } else if (!isLoggedIn) {
+      print('SplashScreen: Navigating to role selection');
       Navigator.pushReplacementNamed(context, AppRoutes.roleSelection);
     } else {
       final userRole = SharedPref.getUserRole();
-      if (userRole == 'artist') {
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          AppRoutes.artistDashboard,
-              (route) => false,
-        );
+      print('SplashScreen: User role: $userRole');
 
+      if (userRole == 'artist') {
+        // Double check approval before navigating to dashboard
+        if (SharedPref.isArtistApproved()) {
+          print('SplashScreen: Artist approved, navigating to dashboard');
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            AppRoutes.artistDashboard,
+                (route) => false,
+          );
+        } else {
+          print('SplashScreen: Artist not approved, navigating to role selection');
+          Navigator.pushReplacementNamed(context, AppRoutes.roleSelection);
+        }
       } else {
+        print('SplashScreen: Customer, navigating to dashboard');
         Navigator.pushNamedAndRemoveUntil(
           context,
           AppRoutes.customerDashboard,
               (route) => false,
         );
-
       }
     }
   }

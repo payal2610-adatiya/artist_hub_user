@@ -65,7 +65,6 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
       );
 
       if (result['success'] == true) {
-        // Update local data
         final updatedUserData = {
           'id': userId,
           'name': _nameController.text.trim(),
@@ -108,19 +107,20 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     Navigator.pushNamedAndRemoveUntil(
       context,
       AppRoutes.roleSelection,
-          (route) => false,
+      (route) => false,
     );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('My Profile'),
+      appBar: AppBar(backgroundColor: AppColors.primaryColor,
+        title: const Text('My Profile', style: TextStyle(color: AppColors.white)),
         actions: [
           if (!_isEditing)
             IconButton(
-              icon: const Icon(Icons.edit),
+              icon: const Icon(Icons.edit, color: AppColors.white,),
               onPressed: () {
                 setState(() => _isEditing = true);
               },
@@ -138,12 +138,8 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Profile header
           _buildProfileHeader(),
-
           const SizedBox(height: 24),
-
-          // Profile form
           Form(
             key: _formKey,
             child: Column(
@@ -153,52 +149,58 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                   labelText: 'Full Name',
                   hintText: 'Enter your full name',
                   enabled: _isEditing,
-                  prefixIcon: const Icon(Icons.person_outline, color: AppColors.darkGrey),
+                  prefixIcon: const Icon(
+                    Icons.person_outline,
+                    color: AppColors.darkGrey,
+                  ),
                   validator: (value) => Helpers.validateRequired(value, 'Name'),
                 ),
-
                 const SizedBox(height: 20),
 
                 CustomTextField(
                   controller: _emailController,
                   labelText: 'Email',
-                  hintText: 'Enter your email',
-                  enabled: false, // Email cannot be changed
-                  prefixIcon: const Icon(Icons.email_outlined, color: AppColors.darkGrey),
+                  enabled: false,
+                  prefixIcon: const Icon(
+                    Icons.email_outlined,
+                    color: AppColors.darkGrey,
+                  ),
                 ),
-
                 const SizedBox(height: 20),
 
                 CustomTextField(
                   controller: _phoneController,
                   labelText: 'Phone Number',
-                  hintText: 'Enter your phone number',
                   enabled: _isEditing,
                   keyboardType: TextInputType.phone,
-                  prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.darkGrey),
+                  prefixIcon: const Icon(
+                    Icons.phone_outlined,
+                    color: AppColors.darkGrey,
+                  ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Phone number is required';
                     }
                     if (!Helpers.isValidPhone(value)) {
-                      return 'Enter a valid 10-digit phone number';
+                      return 'Enter valid 10-digit phone number';
                     }
                     return null;
                   },
                 ),
-
                 const SizedBox(height: 20),
 
                 CustomTextField(
                   controller: _addressController,
                   labelText: 'Address',
-                  hintText: 'Enter your address',
                   enabled: _isEditing,
                   maxLines: 2,
-                  prefixIcon: const Icon(Icons.location_on_outlined, color: AppColors.darkGrey),
-                  validator: (value) => Helpers.validateRequired(value, 'Address'),
+                  prefixIcon: const Icon(
+                    Icons.location_on_outlined,
+                    color: AppColors.darkGrey,
+                  ),
+                  validator: (value) =>
+                      Helpers.validateRequired(value, 'Address'),
                 ),
-
                 const SizedBox(height: 32),
 
                 if (_isEditing) _buildEditActions(),
@@ -208,8 +210,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
 
           const SizedBox(height: 24),
 
-          // Account actions
-          _buildAccountActions(),
+          _buildLogoutSection(),
         ],
       ),
     );
@@ -225,83 +226,38 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Row(
         children: [
-          // Profile picture
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: AppColors.primaryColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(40),
-              border: Border.all(
-                color: AppColors.primaryColor.withOpacity(0.2),
-                width: 2,
-              ),
-            ),
-            child: Center(
-              child: Text(
-                Helpers.getInitials(userName),
-                style: const TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primaryColor,
-                ),
+          CircleAvatar(
+            radius: 40,
+            backgroundColor: AppColors.primaryColor.withOpacity(0.1),
+            child: Text(
+              Helpers.getInitials(userName),
+              style: const TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primaryColor,
               ),
             ),
           ),
-          const SizedBox(width: 20),
-
-          // User info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  userName,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textColor,
-                  ),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                userName,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
                 ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Customer',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.darkGrey,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.successColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    'Active Account',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.successColor,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Customer',
+                style: TextStyle(color: AppColors.darkGrey),
+              ),
+            ],
           ),
         ],
       ),
@@ -316,18 +272,10 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
             onPressed: () {
               setState(() {
                 _isEditing = false;
-                _loadProfile(); // Reset to original values
+                _loadProfile();
               });
             },
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.darkGrey,
-              side: const BorderSide(color: AppColors.lightGrey),
-              minimumSize: const Size(0, 50),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text('Cancel'),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.primaryColor),),
           ),
         ),
         const SizedBox(width: 12),
@@ -336,99 +284,38 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
             text: _isSaving ? 'Saving...' : 'Save Changes',
             onPressed: _saveProfile,
             isLoading: _isSaving,
-            backgroundColor: AppColors.primaryColor,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildAccountActions() {
+  /// 🔴 LOGOUT DESIGN
+  Widget _buildLogoutSection() {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
-      child: Column(
-        children: [
-          const Text(
-            'Account Settings',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textColor,
-            ),
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppColors.errorColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
           ),
-          const SizedBox(height: 16),
-          _buildAccountOption(
-            icon: Icons.security,
-            title: 'Privacy & Security',
-            onTap: () {
-              // Navigate to privacy settings
-            },
-          ),
-          const Divider(height: 1),
-          _buildAccountOption(
-            icon: Icons.notifications,
-            title: 'Notifications',
-            onTap: () {
-              // Navigate to notification settings
-            },
-          ),
-          const Divider(height: 1),
-          _buildAccountOption(
-            icon: Icons.help_outline,
-            title: 'Help & Support',
-            onTap: () {
-              // Navigate to help & support
-            },
-          ),
-          const Divider(height: 1),
-          _buildAccountOption(
-            icon: Icons.info_outline,
-            title: 'About',
-            onTap: () {
-              // Navigate to about
-            },
-          ),
-          const Divider(height: 1),
-          _buildAccountOption(
-            icon: Icons.logout,
-            title: 'Logout',
-            color: AppColors.errorColor,
-            onTap: _logout,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAccountOption({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-    Color? color,
-  }) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: color ?? AppColors.primaryColor),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: color ?? AppColors.textColor,
-          fontWeight: FontWeight.w500,
+          child: const Icon(Icons.logout, color: AppColors.errorColor),
         ),
+        title: const Text(
+          'Logout',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: AppColors.errorColor,
+          ),
+        ),
+        onTap: _logout,
       ),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-      onTap: onTap,
     );
   }
 }

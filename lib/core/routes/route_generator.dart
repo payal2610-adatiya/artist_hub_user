@@ -26,6 +26,7 @@ import 'package:artist_hub/customer/search/search_artist_screen.dart';
 import 'package:artist_hub/customer/reviews/add_review_screen.dart';
 
 import '../../customer/search/artist_detail_screen.dart';
+import '../../models/artist_model.dart';
 
 class RouteGenerator {
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -94,16 +95,42 @@ class RouteGenerator {
           );
         }
         return _errorRoute();
-
       case AppRoutes.createBooking:
         if (args is Map<String, dynamic>) {
-          return MaterialPageRoute(
-            builder: (_) => BookingScreen(
-              artistId: args['artistId'] as int,
-              artistName: args['artistName'] as String,
-            ),
-          );
+          try {
+            final artistData = args['artist'];
+            ArtistModel artist;
+
+            if (artistData is ArtistModel) {
+              artist = artistData;
+            } else if (artistData is Map<String, dynamic>) {
+              artist = ArtistModel.fromJson(artistData);
+            } else {
+              // Create from individual parameters
+              artist = ArtistModel(
+                id: args['artistId'] as int,
+                name: args['artistName'] as String,
+                email: args['artistEmail'],
+                phone:args['artistPhone'] ,
+                 address: args['artistEmail'],
+                category: args['artistCategory'] as String?,
+                price: args['artistPrice'] as String?,
+               // imageUrl: args['artistImageUrl'] as String?,
+                avgRating: double.tryParse(args['artistRating']?.toString() ?? '0.0') ?? 0.0,
+                totalReviews: int.tryParse(args['artistReviews']?.toString() ?? '0') ?? 0,
+              );
+            }
+            return MaterialPageRoute(
+              builder: (_) => BookingScreen(
+                artist: artist,
+              ),
+            );
+          } catch (e) {
+            print('Error creating booking route: $e');
+            return _errorRoute();
+          }
         }
+        return _errorRoute();
         return _errorRoute();
 
       case AppRoutes.customerBookings:
