@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:artist_hub/core/constants/app_colors.dart';
-import 'package:artist_hub/core/constants/app_strings.dart';
 import 'package:artist_hub/core/routes/app_routes.dart';
 import 'package:artist_hub/core/services/api_service.dart';
 import 'package:artist_hub/core/services/shared_pref.dart';
@@ -36,27 +35,54 @@ class _BookingListScreenState extends State<BookingListScreen> {
       _hasError = false;
     });
 
-    final userId = SharedPref.getUserId();
-    if (userId.isEmpty) {
-      setState(() {
-        _isLoading = false;
-        _hasError = true;
-      });
-      return;
-    }
-
     try {
-      final result = await ApiService.getBookingsByCustomer(customerId: int.parse(userId));
-      if (result['success'] == true && result['data'] != null) {
-        final List<dynamic> data = result['data'];
+      final userId = await SharedPref.getUserId();
+      if (userId.isEmpty) {
         setState(() {
-          _bookings = data.map((item) => BookingModel.fromJson(item)).toList();
-          _applyFilters();
+          _isLoading = false;
+          _hasError = true;
         });
+        Helpers.showSnackbar(context, 'Please login first', isError: true);
+        return;
+      }
+
+      print('Loading bookings for user ID: $userId');
+
+      final result = await ApiService.getBookingsByCustomer(customerId: int.parse(userId));
+
+      print('Bookings API Result: ${result['success']}');
+      print('Bookings Data: ${result['data']}');
+
+      if (result['success'] == true) {
+        if (result['data'] is List) {
+          final List<dynamic> data = result['data'];
+          final List<BookingModel> bookings = [];
+
+          for (var item in data) {
+            try {
+              bookings.add(BookingModel.fromJson(item));
+            } catch (e) {
+              print('Error parsing booking item: $e');
+              print('Item data: $item');
+            }
+          }
+
+          setState(() {
+            _bookings = bookings;
+            _applyFilters();
+          });
+        } else {
+          print('Invalid bookings data format: ${result['data']}');
+          setState(() {
+            _hasError = true;
+          });
+        }
       } else {
+        print('Failed to load bookings: ${result['message']}');
         setState(() => _hasError = true);
       }
     } catch (e) {
+      print('Error loading bookings: $e');
       setState(() => _hasError = true);
     } finally {
       setState(() => _isLoading = false);
@@ -106,7 +132,7 @@ class _BookingListScreenState extends State<BookingListScreen> {
     Navigator.pushNamed(
       context,
       AppRoutes.customerBookingDetail,
-      arguments: {'booking': booking},
+      arguments: booking,
     );
   }
 
@@ -125,8 +151,11 @@ class _BookingListScreenState extends State<BookingListScreen> {
 
     if (!confirmed) return;
 
-    final userId = SharedPref.getUserId();
-    if (userId.isEmpty) return;
+    final userId = await SharedPref.getUserId();
+    if (userId.isEmpty) {
+      Helpers.showSnackbar(context, 'Please login first', isError: true);
+      return;
+    }
 
     try {
       final result = await ApiService.cancelBookingByCustomer(
@@ -212,14 +241,14 @@ class _BookingListScreenState extends State<BookingListScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.primaryColor,
-        title: const Text('My Bookings', style: TextStyle(color: AppColors.white),),
+        title: const Text('My Bookings', style: TextStyle(color: AppColors.white)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.search,color: AppColors.white,),
+            icon: const Icon(Icons.search, color: AppColors.white),
             onPressed: _showSearchDialog,
           ),
           IconButton(
-            icon: const Icon(Icons.refresh, color: AppColors.white,),
+            icon: const Icon(Icons.refresh, color: AppColors.white),
             onPressed: _loadBookings,
           ),
         ],

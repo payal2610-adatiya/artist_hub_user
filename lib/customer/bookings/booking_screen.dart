@@ -1,4 +1,3 @@
-// lib/customer/bookings/booking_screen.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:artist_hub/core/constants/app_colors.dart';
@@ -8,6 +7,8 @@ import 'package:artist_hub/core/widgets/custom_button.dart';
 import 'package:artist_hub/core/widgets/custom_textfield.dart';
 import 'package:artist_hub/models/artist_model.dart';
 import 'package:artist_hub/utils/helpers.dart';
+
+import '../../core/routes/app_routes.dart';
 
 class BookingScreen extends StatefulWidget {
   final ArtistModel artist;
@@ -30,14 +31,14 @@ class _BookingScreenState extends State<BookingScreen> {
 
   // Calculate total amount
   int get _totalAmount {
-    final artistPrice = int.tryParse(widget.artist.price ?? '0') ?? 0;
-    return artistPrice + 200; // Artist fee + service fee
+    final artistPrice = int.tryParse(widget.artist.price?.toString() ?? '0') ?? 0;
+    return artistPrice; // Remove service fee if not needed
   }
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: DateTime.now().add(const Duration(days: 1)),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (context, child) {
@@ -69,6 +70,12 @@ class _BookingScreenState extends State<BookingScreen> {
       return;
     }
 
+    // Check if date is in the past
+    if (_selectedDate!.isBefore(DateTime.now())) {
+      Helpers.showSnackbar(context, 'Please select a future date', isError: true);
+      return;
+    }
+
     final userId = await SharedPref.getUserId();
     if (userId.isEmpty) {
       Helpers.showSnackbar(context, 'Please login to book an artist', isError: true);
@@ -91,6 +98,12 @@ class _BookingScreenState extends State<BookingScreen> {
     });
 
     try {
+      print('Submitting booking...');
+      print('Customer ID: $userId');
+      print('Artist ID: ${widget.artist.id}');
+      print('Date: ${DateFormat('yyyy-MM-dd').format(_selectedDate!)}');
+      print('Payment Method: $_selectedPaymentMethod');
+
       final result = await ApiService.addBooking(
         customerId: int.parse(userId),
         artistId: widget.artist.id!,
@@ -102,11 +115,18 @@ class _BookingScreenState extends State<BookingScreen> {
             : '',
       );
 
+      print('Booking result: $result');
+
       if (result['success'] == true) {
         Helpers.showSnackbar(context, 'Booking successful!');
 
-        // Navigate back with success
-        Navigator.pop(context, true);
+        // Navigate back to bookings list
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.customerDashboard,
+              (route) => false,
+        );
+        Navigator.pushNamed(context, AppRoutes.customerBookings);
       } else {
         setState(() {
           _errorMessage = result['message'] ?? 'Booking failed';
@@ -114,6 +134,7 @@ class _BookingScreenState extends State<BookingScreen> {
         Helpers.showSnackbar(context, _errorMessage!, isError: true);
       }
     } catch (e) {
+      print('Booking error: $e');
       setState(() {
         _errorMessage = 'Error: ${e.toString()}';
       });
@@ -121,6 +142,93 @@ class _BookingScreenState extends State<BookingScreen> {
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Book Artist'),
+        backgroundColor: AppColors.primaryColor,
+        foregroundColor: AppColors.white,
+        elevation: 0,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Artist Info
+              _buildArtistInfo(),
+
+              const SizedBox(height: 24),
+
+              // Booking Date
+              _buildDatePicker(),
+
+              const SizedBox(height: 20),
+
+              // Event Address
+// In BookingScreen, update the CustomTextField for event address:
+              CustomTextField(
+                controller: _eventAddressController,
+                labelText: 'Event Address *',
+                hintText: 'Enter venue address (e.g., Wedding Hall, Mumbai)',
+                maxLines: 3,
+                prefixIcon: const Icon(Icons.location_on_outlined),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter event address';
+                  }
+                  if (value.length < 5) { // Reduced from 10 to 5
+                    return 'Address is too short. Please provide more details';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+
+              // Payment Method
+              _buildPaymentMethod(),
+
+              // Payment ID (if online)
+              _buildPaymentIdField(),
+
+              const SizedBox(height: 30),
+
+              // Booking Summary
+              _buildBookingSummary(),
+
+              const SizedBox(height: 30),
+
+              // Error message
+              if (_errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(
+                      color: AppColors.errorColor,
+                      fontSize: 14,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+
+              // Confirm Booking Button
+              CustomButton(
+                text: 'Confirm Booking',
+                onPressed: _submitBooking,
+                isLoading: _isLoading,
+                backgroundColor: AppColors.primaryColor,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildArtistInfo() {
@@ -133,8 +241,24 @@ class _BookingScreenState extends State<BookingScreen> {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            // Artist Image
-
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: AppColors.primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: Center(
+                child: Text(
+                  Helpers.getInitials(widget.artist.name ?? 'A'),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primaryColor,
+                  ),
+                ),
+              ),
+            ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
@@ -228,7 +352,7 @@ class _BookingScreenState extends State<BookingScreen> {
                 const SizedBox(width: 12),
                 Text(
                   _selectedDate != null
-                      ? DateFormat('MMMM dd, yyyy').format(_selectedDate!)
+                      ? DateFormat('dd MMM yyyy').format(_selectedDate!)
                       : 'Select date',
                   style: TextStyle(
                     fontSize: 16,
@@ -345,10 +469,6 @@ class _BookingScreenState extends State<BookingScreen> {
               'Artist Fee',
               '₹${widget.artist.price ?? '0'}',
             ),
-            _buildSummaryItem(
-              'Service Fee',
-              '₹200',
-            ),
             const Divider(height: 24),
             _buildSummaryItem(
               'Total Amount',
@@ -384,89 +504,6 @@ class _BookingScreenState extends State<BookingScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Book Artist'),
-        backgroundColor: AppColors.white,
-        elevation: 1,
-        iconTheme: const IconThemeData(color: AppColors.textColor),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Artist Info
-              _buildArtistInfo(),
-
-              const SizedBox(height: 24),
-
-              // Booking Date
-              _buildDatePicker(),
-
-              const SizedBox(height: 20),
-
-              // Event Address
-              CustomTextField(
-                controller: _eventAddressController,
-                labelText: 'Event Address *',
-                hintText: 'Enter venue address',
-                maxLines: 3,
-                prefixIcon: const Icon(Icons.location_on_outlined),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter event address';
-                  }
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 20),
-
-              // Payment Method
-              _buildPaymentMethod(),
-
-              // Payment ID (if online)
-              _buildPaymentIdField(),
-
-              const SizedBox(height: 30),
-
-              // Booking Summary
-              _buildBookingSummary(),
-
-              const SizedBox(height: 30),
-
-              // Error message
-              if (_errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Text(
-                    _errorMessage!,
-                    style: const TextStyle(
-                      color: AppColors.errorColor,
-                      fontSize: 14,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-
-              // Confirm Booking Button
-              CustomButton(
-                text: 'Confirm Booking',
-                onPressed: _submitBooking,
-                isLoading: _isLoading,
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

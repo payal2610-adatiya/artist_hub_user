@@ -18,6 +18,13 @@ class CustomerBookingDetailScreen extends StatefulWidget {
 
 class _CustomerBookingDetailScreenState extends State<CustomerBookingDetailScreen> {
   bool _isLoading = false;
+  BookingModel? _booking;
+
+  @override
+  void initState() {
+    super.initState();
+    _booking = widget.booking;
+  }
 
   Future<void> _cancelBooking() async {
     final reason = await _showCancelDialog();
@@ -29,14 +36,14 @@ class _CustomerBookingDetailScreenState extends State<CustomerBookingDetailScree
     final confirmed = await Helpers.showConfirmationDialog(
       context,
       'Cancel Booking',
-      'Are you sure you want to cancel this booking? A cancellation fee may apply.',
+      'Are you sure you want to cancel this booking?',
     );
 
     if (!confirmed) return;
 
     setState(() => _isLoading = true);
 
-    final userId = SharedPref.getUserId();
+    final userId = await SharedPref.getUserId();
     if (userId.isEmpty) {
       Helpers.showSnackbar(context, 'User not found', isError: true);
       setState(() => _isLoading = false);
@@ -44,16 +51,43 @@ class _CustomerBookingDetailScreenState extends State<CustomerBookingDetailScree
     }
 
     try {
+      print('Cancelling booking: ${_booking!.id}');
+
       final result = await ApiService.cancelBookingByCustomer(
-        bookingId: widget.booking.id,
+        bookingId: _booking!.id,
         customerId: int.parse(userId),
         cancelReason: reason,
       );
 
+      print('Cancel result: $result');
+
       if (result['success'] == true) {
         Helpers.showSnackbar(context, 'Booking cancelled successfully');
-        if (!mounted) return;
-        Navigator.pop(context);
+
+        // Update booking status
+        if (mounted) {
+          setState(() {
+            _booking = BookingModel(
+              id: _booking!.id,
+              customerId: _booking!.customerId,
+              artistId: _booking!.artistId,
+              bookingDate: _booking!.bookingDate,
+              eventAddress: _booking!.eventAddress,
+              status: 'cancelled',
+              paymentStatus: _booking!.paymentStatus,
+              paymentId: _booking!.paymentId,
+              cancelReason: reason,
+              cancelledBy: 'customer',
+              createdAt: _booking!.createdAt,
+              customerName: _booking!.customerName,
+              customerEmail: _booking!.customerEmail,
+              customerPhone: _booking!.customerPhone,
+              artistName: _booking!.artistName,
+              artistEmail: _booking!.artistEmail,
+             // artistPhone: _booking!.artistPhone,
+            );
+          });
+        }
       } else {
         Helpers.showSnackbar(
           context,
@@ -62,6 +96,7 @@ class _CustomerBookingDetailScreenState extends State<CustomerBookingDetailScree
         );
       }
     } catch (e) {
+      print('Cancel error: $e');
       Helpers.showSnackbar(context, 'Error: $e', isError: true);
     } finally {
       setState(() => _isLoading = false);
@@ -73,17 +108,22 @@ class _CustomerBookingDetailScreenState extends State<CustomerBookingDetailScree
       context,
       AppRoutes.addReview,
       arguments: {
-        'bookingId': widget.booking.id,
-        'artistId': widget.booking.artistId,
-        'artistName': widget.booking.artistName,
+        'bookingId': _booking!.id,
+        'artistId': _booking!.artistId,
+        'artistName': _booking!.artistName,
       },
     );
   }
-
-  void _contactArtist() {
-    // Implement contact functionality
-    Helpers.showSnackbar(context, 'Contact functionality coming soon');
-  }
+  //
+  // void _contactArtist() {
+  //   final phone = _booking!.artistPhone;
+  //   if (phone != null && phone.isNotEmpty) {
+  //     // You can implement phone call functionality here
+  //     Helpers.showSnackbar(context, 'Calling artist: $phone');
+  //   } else {
+  //     Helpers.showSnackbar(context, 'Artist phone number not available');
+  //   }
+  // }
 
   Future<String?> _showCancelDialog() async {
     final TextEditingController controller = TextEditingController();
@@ -128,16 +168,16 @@ class _CustomerBookingDetailScreenState extends State<CustomerBookingDetailScree
   }
 
   Color _getStatusColor() {
-    if (widget.booking.isCancelled) return AppColors.errorColor;
-    if (widget.booking.isCompleted) return AppColors.successColor;
-    if (widget.booking.paymentStatus == 'paid') return AppColors.successColor;
+    if (_booking!.isCancelled) return AppColors.errorColor;
+    if (_booking!.isCompleted) return AppColors.successColor;
+    if (_booking!.paymentStatus == 'paid') return AppColors.successColor;
     return AppColors.warningColor;
   }
 
   String _getStatusText() {
-    if (widget.booking.isCancelled) return 'Cancelled';
-    if (widget.booking.isCompleted) return 'Completed';
-    if (widget.booking.paymentStatus == 'paid') return 'Paid & Confirmed';
+    if (_booking!.isCancelled) return 'Cancelled';
+    if (_booking!.isCompleted) return 'Completed';
+    if (_booking!.paymentStatus == 'paid') return 'Paid & Confirmed';
     return 'Pending Payment';
   }
 
@@ -209,9 +249,9 @@ class _CustomerBookingDetailScreenState extends State<CustomerBookingDetailScree
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: Icon(
-                  widget.booking.isCancelled
+                  _booking!.isCancelled
                       ? Icons.cancel
-                      : widget.booking.isCompleted
+                      : _booking!.isCompleted
                       ? Icons.check_circle
                       : Icons.event_available,
                   size: 32,
@@ -224,7 +264,7 @@ class _CustomerBookingDetailScreenState extends State<CustomerBookingDetailScree
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Booking #${widget.booking.id}',
+                      'Booking #${_booking!.id}',
                       style: const TextStyle(
                         fontSize: 14,
                         color: AppColors.darkGrey,
@@ -245,7 +285,7 @@ class _CustomerBookingDetailScreenState extends State<CustomerBookingDetailScree
             ],
           ),
           const SizedBox(height: 16),
-          if (widget.booking.isCancelled && widget.booking.cancelReason != null)
+          if (_booking!.isCancelled && _booking!.cancelReason != null)
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -259,7 +299,7 @@ class _CustomerBookingDetailScreenState extends State<CustomerBookingDetailScree
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Cancellation Reason: ${widget.booking.cancelReason}',
+                      'Cancellation Reason: ${_booking!.cancelReason}',
                       style: TextStyle(
                         color: AppColors.errorColor,
                       ),
@@ -310,7 +350,7 @@ class _CustomerBookingDetailScreenState extends State<CustomerBookingDetailScree
                 ),
                 child: Center(
                   child: Text(
-                    Helpers.getInitials(widget.booking.artistName ?? 'A'),
+                    Helpers.getInitials(_booking!.artistName ?? 'A'),
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
@@ -325,7 +365,7 @@ class _CustomerBookingDetailScreenState extends State<CustomerBookingDetailScree
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.booking.artistName ?? 'Artist',
+                      _booking!.artistName ?? 'Artist',
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -333,24 +373,34 @@ class _CustomerBookingDetailScreenState extends State<CustomerBookingDetailScree
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      widget.booking.artistEmail ?? 'No email provided',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppColors.darkGrey,
+                    // if (_booking!.artistPhone != null && _booking!.artistPhone!.isNotEmpty)
+                    //   Text(
+                    //     _booking!.artistPhone!,
+                    //     style: const TextStyle(
+                    //       fontSize: 14,
+                    //       color: AppColors.darkGrey,
+                    //     ),
+                    //   ),
+                    if (_booking!.artistEmail != null && _booking!.artistEmail!.isNotEmpty)
+                      Text(
+                        _booking!.artistEmail!,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.darkGrey,
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          CustomButton(
-            text: 'Contact Artist',
-            onPressed: _contactArtist,
-            backgroundColor: AppColors.primaryColor,
-          ),
+          // if (_booking!.artistPhone != null && _booking!.artistPhone!.isNotEmpty)
+          //   CustomButton(
+          //     text: 'Contact Artist',
+          //     onPressed: _contactArtist,
+          //     backgroundColor: AppColors.primaryColor,
+          //   ),
         ],
       ),
     );
@@ -385,13 +435,13 @@ class _CustomerBookingDetailScreenState extends State<CustomerBookingDetailScree
           _buildInfoRow(
             icon: Icons.calendar_today,
             label: 'Date',
-            value: Helpers.formatDate(widget.booking.bookingDate, format: 'dd MMM yyyy, EEEE'),
+            value: Helpers.formatDate(_booking!.bookingDate, format: 'dd MMM yyyy, EEEE'),
           ),
           const SizedBox(height: 12),
           _buildInfoRow(
             icon: Icons.access_time,
             label: 'Time',
-            value: Helpers.formatDate(widget.booking.bookingDate, format: 'hh:mm a'),
+            value: Helpers.formatDate(_booking!.bookingDate, format: 'hh:mm a'),
           ),
           const SizedBox(height: 12),
           Row(
@@ -412,7 +462,7 @@ class _CustomerBookingDetailScreenState extends State<CustomerBookingDetailScree
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      widget.booking.eventAddress,
+                      _booking!.eventAddress,
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -494,20 +544,20 @@ class _CustomerBookingDetailScreenState extends State<CustomerBookingDetailScree
           _buildInfoRow(
             icon: Icons.payment,
             label: 'Status',
-            value: widget.booking.paymentStatus == 'paid' ? 'Paid' : 'Pending',
+            value: _booking!.paymentStatus == 'paid' ? 'Paid' : 'Pending',
           ),
           const SizedBox(height: 12),
-          if (widget.booking.paymentId != null)
+          if (_booking!.paymentId != null && _booking!.paymentId!.isNotEmpty)
             _buildInfoRow(
               icon: Icons.receipt,
               label: 'Transaction ID',
-              value: widget.booking.paymentId!,
+              value: _booking!.paymentId!,
             ),
           const SizedBox(height: 12),
           _buildInfoRow(
             icon: Icons.date_range,
             label: 'Booked On',
-            value: Helpers.formatDate(widget.booking.createdAt),
+            value: Helpers.formatDate(_booking!.createdAt),
           ),
         ],
       ),
@@ -517,7 +567,7 @@ class _CustomerBookingDetailScreenState extends State<CustomerBookingDetailScree
   Widget _buildActionButtons() {
     return Column(
       children: [
-        if (widget.booking.isUpcoming)
+        if (_booking!.isUpcoming)
           CustomButton(
             text: 'Cancel Booking',
             onPressed: _cancelBooking,
@@ -525,7 +575,7 @@ class _CustomerBookingDetailScreenState extends State<CustomerBookingDetailScree
             isLoading: _isLoading,
           ),
 
-        if (widget.booking.isCompleted && !widget.booking.isCancelled)
+        if (_booking!.isCompleted && !_booking!.isCancelled)
           CustomButton(
             text: 'Add Review',
             onPressed: _addReview,

@@ -35,24 +35,68 @@ class BookingModel {
     this.artistEmail,
   });
 
+
+  //NEW
   factory BookingModel.fromJson(Map<String, dynamic> json) {
+    print('Parsing booking JSON: $json');
+
+    // Parse ID - handle different field names
+    int? id;
+    try {
+      if (json['booking_id'] != null) {
+        id = int.tryParse(json['booking_id'].toString());
+      }
+      if (id == null && json['id'] != null) {
+        id = int.tryParse(json['id'].toString());
+      }
+      id ??= 0;
+    } catch (e) {
+      print('Error parsing booking ID: $e');
+      id = 0;
+    }
+
+    // Parse dates
+    DateTime bookingDate;
+    try {
+      if (json['booking_date'] != null) {
+        bookingDate = DateTime.parse(json['booking_date'].toString());
+      } else {
+        bookingDate = DateTime.now();
+      }
+    } catch (e) {
+      print('Error parsing booking date: $e');
+      bookingDate = DateTime.now();
+    }
+
+    DateTime createdAt;
+    try {
+      if (json['created_at'] != null) {
+        createdAt = DateTime.parse(json['created_at'].toString());
+      } else {
+        createdAt = DateTime.now();
+      }
+    } catch (e) {
+      print('Error parsing created at: $e');
+      createdAt = DateTime.now();
+    }
+
     return BookingModel(
-      id: int.parse(json['id'].toString()),
-      customerId: int.parse(json['customer_id'].toString()),
-      artistId: int.parse(json['artist_id'].toString()),
+      id: id,
+      customerId: int.tryParse(json['customer_id']?.toString() ?? '0') ?? 0,
+      artistId: int.tryParse(json['artist_id']?.toString() ?? '0') ?? 0,
       bookingDate: json['booking_date'] ?? '',
-      eventAddress: json['event_address'] ?? '',
-      status: json['status'] ?? '',
-      paymentStatus: json['payment_status'] ?? '',
-      paymentId: json['payment_id'],
-      cancelledBy: json['cancelled_by'],
-      cancelReason: json['cancel_reason'],
+      eventAddress: json['event_address']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'booked',
+      paymentStatus: json['payment_status']?.toString() ?? 'pending',
+      paymentId: json['payment_id']?.toString(),
+      cancelReason: json['cancel_reason']?.toString(),
+      cancelledBy: json['cancelled_by']?.toString(),
       createdAt: json['created_at'] ?? '',
-      customerName: json['customer_name'],
-      customerEmail: json['customer_email'],
-      customerPhone: json['customer_phone'],
-      artistName: json['artist_name'],
-      artistEmail: json['artist_email'],
+      customerName: json['customer_name']?.toString(),
+      customerEmail: json['customer_email']?.toString(),
+      customerPhone: json['customer_phone']?.toString(),
+      artistName: json['artist_name']?.toString(),
+      artistEmail: json['artist_email']?.toString(),
     );
   }
 

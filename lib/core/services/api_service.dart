@@ -545,50 +545,6 @@ class ApiService {
 
 
   // ============ BOOKINGS ============
-  static Future<Map<String, dynamic>> addBooking({
-    required int customerId,
-    required int artistId,
-    required String bookingDate,
-    required String eventAddress,
-    required String paymentType,
-    String paymentId = '',
-  }) async {
-    try {
-      final response = await http.post(
-        Uri.parse(ApiEndpoints.addBooking),
-        body: {
-          'customer_id': customerId.toString(),
-          'artist_id': artistId.toString(),
-          'booking_date': bookingDate,
-          'event_address': eventAddress,
-          'payment_type': paymentType,
-          'payment_id': paymentId,
-        },
-      ).timeout(timeout);
-
-      final data = _parseResponse(response);
-
-      if (data['status'] == true) {
-        return {
-          'success': true,
-          'message': data['message'] ?? 'Booking added successfully',
-          'data': data['data'] ?? data,
-        };
-      }
-
-      return {
-        'success': false,
-        'message': data['message'] ?? 'Failed to add booking',
-        'data': null,
-      };
-    } catch (e) {
-      return {
-        'success': false,
-        'message': 'Network error: $e',
-        'data': null,
-      };
-    }
-  }
 
   static Future<Map<String, dynamic>> getBookingsByArtist({required int artistId}) async {
     try {
@@ -619,12 +575,20 @@ class ApiService {
       };
     }
   }
+  //new
+  // In ApiService class, add/update these methods:
 
+// Fix: Get bookings by customer ID
   static Future<Map<String, dynamic>> getBookingsByCustomer({required int customerId}) async {
     try {
+      print('Fetching bookings for customer ID: $customerId');
+
       final response = await http.get(
-        Uri.parse('${ApiEndpoints.viewBookingById}?customer_id=$customerId'),
+        Uri.parse('${baseUrl}view_booking.php?customer_id=$customerId'),
       ).timeout(timeout);
+
+      print('Bookings API Response: ${response.statusCode}');
+      print('Bookings API Body: ${response.body}');
 
       final data = _parseResponse(response);
 
@@ -632,7 +596,7 @@ class ApiService {
         return {
           'success': true,
           'message': data['message'] ?? 'Bookings fetched successfully',
-          'data': data['data'] ?? data,
+          'data': data['data'] ?? [],
         };
       }
 
@@ -642,6 +606,7 @@ class ApiService {
         'data': null,
       };
     } catch (e) {
+      print('Bookings API Error: $e');
       return {
         'success': false,
         'message': 'Network error: $e',
@@ -649,6 +614,105 @@ class ApiService {
       };
     }
   }
+
+// Fix: Cancel booking by customer
+  static Future<Map<String, dynamic>> cancelBookingByCustomer({
+    required int bookingId,
+    required int customerId,
+    required String cancelReason,
+  }) async {
+    try {
+      print('Cancelling booking: bookingId=$bookingId, customerId=$customerId');
+
+      final response = await http.post(
+        Uri.parse('${baseUrl}customer_booking_cancel.php'),
+        body: {
+          'booking_id': bookingId.toString(),
+          'customer_id': customerId.toString(),
+          'cancel_reason': cancelReason,
+        },
+      ).timeout(timeout);
+
+      print('Cancel Booking Response: ${response.statusCode}');
+      print('Cancel Booking Body: ${response.body}');
+
+      final data = _parseResponse(response);
+
+      if (data['status'] == true) {
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Booking cancelled successfully',
+          'data': data['data'] ?? data,
+        };
+      }
+
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Failed to cancel booking',
+        'data': null,
+      };
+    } catch (e) {
+      print('Cancel Booking API Exception: $e');
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'data': null,
+      };
+    }
+  }
+
+// Fix: Add booking
+  static Future<Map<String, dynamic>> addBooking({
+    required int customerId,
+    required int artistId,
+    required String bookingDate,
+    required String eventAddress,
+    required String paymentType,
+    String paymentId = '',
+  }) async {
+    try {
+      print('Adding booking: customerId=$customerId, artistId=$artistId');
+
+      final response = await http.post(
+        Uri.parse('${baseUrl}add_bookings.php'),
+        body: {
+          'customer_id': customerId.toString(),
+          'artist_id': artistId.toString(),
+          'booking_date': bookingDate,
+          'event_address': eventAddress,
+          'payment_type': paymentType,
+          'payment_id': paymentId,
+        },
+      ).timeout(timeout);
+
+      print('Add Booking Response: ${response.statusCode}');
+      print('Add Booking Body: ${response.body}');
+
+      final data = _parseResponse(response);
+
+      if (data['status'] == true) {
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Booking added successfully',
+          'data': data['data'] ?? data,
+        };
+      }
+
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Failed to add booking',
+        'data': null,
+      };
+    } catch (e) {
+      print('Add Booking API Exception: $e');
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'data': null,
+      };
+    }
+  }
+
 
   static Future<Map<String, dynamic>> cancelBookingByArtist({
     required int bookingId,
@@ -689,44 +753,6 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> cancelBookingByCustomer({
-    required int bookingId,
-    required int customerId,
-    required String cancelReason,
-  }) async {
-    try {
-      final response = await http.post(
-        Uri.parse(ApiEndpoints.customerBookingCancel),
-        body: {
-          'booking_id': bookingId.toString(),
-          'customer_id': customerId.toString(),
-          'cancel_reason': cancelReason,
-        },
-      ).timeout(timeout);
-
-      final data = _parseResponse(response);
-
-      if (data['status'] == true) {
-        return {
-          'success': true,
-          'message': data['message'] ?? 'Booking cancelled successfully',
-          'data': data['data'] ?? data,
-        };
-      }
-
-      return {
-        'success': false,
-        'message': data['message'] ?? 'Failed to cancel booking',
-        'data': null,
-      };
-    } catch (e) {
-      return {
-        'success': false,
-        'message': 'Network error: $e',
-        'data': null,
-      };
-    }
-  }
 
   // ============ REVIEWS ============
   static Future<Map<String, dynamic>> addReview({
