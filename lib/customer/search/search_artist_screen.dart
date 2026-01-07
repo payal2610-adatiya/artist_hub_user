@@ -112,159 +112,6 @@ class _SearchArtistScreenState extends State<SearchArtistScreen> {
     setState(() => _filteredArtists = filtered);
   }
 
-  void _showFilterDialog() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.card,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Filter & Sort',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textColor,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Category filter
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Category',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textColor,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _categories.map((category) {
-                      final isSelected = _selectedCategory == category;
-                      return FilterChip(
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          setState(() => _selectedCategory = category);
-                        },
-                        label: Text(
-                          category == 'all' ? 'All Categories' : category,
-                          style: TextStyle(
-                            color: isSelected ? AppColors.white : AppColors.textColor,
-                          ),
-                        ),
-                        selectedColor: AppColors.primaryColor,
-                        checkmarkColor: AppColors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          side: BorderSide(
-                            color: isSelected
-                                ? AppColors.primaryColor
-                                : AppColors.lightGrey,
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Sort options
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Sort By',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textColor,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Column(
-                    children: _sortOptions.entries.map((entry) {
-                      final isSelected = _selectedSort == entry.key;
-                      return RadioListTile<String>(
-                        value: entry.key,
-                        groupValue: _selectedSort,
-                        onChanged: (value) {
-                          setState(() => _selectedSort = value!);
-                        },
-                        title: Text(entry.value),
-                        activeColor: AppColors.primaryColor,
-                        contentPadding: EdgeInsets.zero,
-                      );
-                    }).toList(),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Apply button
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.darkGrey,
-                            side: const BorderSide(color: AppColors.lightGrey),
-                            minimumSize: const Size(0, 50),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Text('Cancel'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            _applyFilters();
-                            Navigator.pop(context);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryColor,
-                            foregroundColor: AppColors.white,
-                            minimumSize: const Size(0, 50),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Text('Apply'),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
 
   void _openArtistDetail(ArtistModel artist) {
     Navigator.pushNamed(
@@ -279,13 +126,10 @@ class _SearchArtistScreenState extends State<SearchArtistScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        iconTheme: IconThemeData(color: Colors.white),
         backgroundColor: AppColors.primaryColor,
         title: const Text('Find Artists', style: TextStyle(color: AppColors.white),),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: _showFilterDialog,
-          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadArtists,

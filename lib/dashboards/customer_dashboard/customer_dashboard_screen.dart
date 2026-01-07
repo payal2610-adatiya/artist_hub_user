@@ -88,12 +88,6 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
         ),),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: AppColors.white,),
-            onPressed: () {
-              // Navigate to notification
-            },
-          ),
-          IconButton(
             icon: const Icon(Icons.refresh, color: AppColors.white,),
             onPressed: _loadDashboardData,
           ),

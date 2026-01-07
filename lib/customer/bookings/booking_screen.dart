@@ -148,6 +148,7 @@ class _BookingScreenState extends State<BookingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        iconTheme: IconThemeData(color: AppColors.white),
         title: const Text('Book Artist'),
         backgroundColor: AppColors.primaryColor,
         foregroundColor: AppColors.white,

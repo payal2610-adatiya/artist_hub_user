@@ -240,13 +240,10 @@ class _BookingListScreenState extends State<BookingListScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        iconTheme: IconThemeData(color: AppColors.white),
         backgroundColor: AppColors.primaryColor,
         title: const Text('My Bookings', style: TextStyle(color: AppColors.white)),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: AppColors.white),
-            onPressed: _showSearchDialog,
-          ),
           IconButton(
             icon: const Icon(Icons.refresh, color: AppColors.white),
             onPressed: _loadBookings,
@@ -583,43 +580,4 @@ class _BookingListScreenState extends State<BookingListScreen> {
     );
   }
 
-  void _showSearchDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Search Bookings'),
-        content: TextField(
-          autofocus: true,
-          decoration: InputDecoration(
-            hintText: 'Search by artist name or location...',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          onChanged: (value) {
-            setState(() {
-              _searchQuery = value;
-              _applyFilters();
-            });
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _searchQuery = '';
-                _applyFilters();
-              });
-              Navigator.pop(context);
-            },
-            child: const Text('Clear'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
 }

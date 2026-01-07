@@ -115,7 +115,9 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(backgroundColor: AppColors.primaryColor,
+      appBar: AppBar(
+        iconTheme: IconThemeData(color: AppColors.white),
+        backgroundColor: AppColors.primaryColor,
         title: const Text('My Profile', style: TextStyle(color: AppColors.white)),
         actions: [
           if (!_isEditing)
