@@ -16,10 +16,27 @@ class BookingScreen extends StatefulWidget {
   const BookingScreen({super.key, required this.artist});
 
   @override
+
   State<BookingScreen> createState() => _BookingScreenState();
 }
 
 class _BookingScreenState extends State<BookingScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _debugArtistData();
+  }
+
+  void _debugArtistData() {
+    print('=== DEBUG: Artist Data in BookingScreen ===');
+    print('Artist ID: ${widget.artist.id}');
+    print('Artist Name: ${widget.artist.name}');
+    print('Artist Price: ${widget.artist.price}');
+    print('Artist Price Type: ${widget.artist.price.runtimeType}');
+    print('Artist Category: ${widget.artist.category}');
+    print('Artist Rating: ${widget.artist.avgRating}');
+    print('Full Artist Object: ${widget.artist.toJson()}');
+  }
   final _formKey = GlobalKey<FormState>();
   final _eventAddressController = TextEditingController();
   final _paymentIdController = TextEditingController();

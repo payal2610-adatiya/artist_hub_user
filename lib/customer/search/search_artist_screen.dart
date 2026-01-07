@@ -8,6 +8,8 @@ import 'package:artist_hub/core/widgets/no_data_widget.dart';
 import 'package:artist_hub/models/artist_model.dart';
 import 'package:artist_hub/utils/helpers.dart';
 
+import '../bookings/booking_screen.dart';
+
 class SearchArtistScreen extends StatefulWidget {
   const SearchArtistScreen({super.key});
 
@@ -363,15 +365,12 @@ class _SearchArtistScreenState extends State<SearchArtistScreen> {
                 // Book button
                 ElevatedButton(
                   onPressed: () {
-                    Navigator.pushNamed(
+                    Navigator.push(
                       context,
-                      AppRoutes.createBooking,
-                      arguments: {
-                        'artistId': artist.id,
-                        'artistName': artist.name,
-                      },
-                    );
-                  },
+                      MaterialPageRoute(
+                        builder: (context) => BookingScreen(artist: artist),
+                      ),
+                    );                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryColor,
                     foregroundColor: AppColors.white,

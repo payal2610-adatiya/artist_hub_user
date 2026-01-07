@@ -96,41 +96,23 @@ class RouteGenerator {
         }
         return _errorRoute();
       case AppRoutes.createBooking:
-        if (args is Map<String, dynamic>) {
-          try {
-            final artistData = args['artist'];
-            ArtistModel artist;
+      case AppRoutes.createBooking:
+        final args = settings.arguments as Map<String, dynamic>;
+        final artistJson = args['artist'];
+        ArtistModel artist;
 
-            if (artistData is ArtistModel) {
-              artist = artistData;
-            } else if (artistData is Map<String, dynamic>) {
-              artist = ArtistModel.fromJson(artistData);
-            } else {
-              // Create from individual parameters
-              artist = ArtistModel(
-                id: args['artistId'] as int,
-                name: args['artistName'] as String,
-                email: args['artistEmail'],
-                phone:args['artistPhone'] ,
-                address: args['artistEmail'],
-                category: args['artistCategory'] as String?,
-                price: args['artistPrice'] as String?,
-               // imageUrl: args['artistImageUrl'] as String?,
-                avgRating: double.tryParse(args['artistRating']?.toString() ?? '0.0') ?? 0.0,
-                totalReviews: int.tryParse(args['artistReviews']?.toString() ?? '0') ?? 0,
-              );
-            }
-            return MaterialPageRoute(
-              builder: (_) => BookingScreen(
-                artist: artist,
-              ),
-            );
-          } catch (e) {
-            print('Error creating booking route: $e');
-            return _errorRoute();
-          }
+        if (artistJson is Map<String, dynamic>) {
+          artist = ArtistModel.fromJson(artistJson);
+        } else if (artistJson is ArtistModel) {
+          artist = artistJson;
+        } else {
+          // Try to parse from JSON string or handle error
+          artist = ArtistModel.fromJson({});
         }
-        return _errorRoute();
+
+        return MaterialPageRoute(
+          builder: (_) => BookingScreen(artist: artist),
+        );
         return _errorRoute();
 
       case AppRoutes.customerBookings:
