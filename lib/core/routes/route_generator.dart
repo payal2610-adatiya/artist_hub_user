@@ -112,7 +112,7 @@ class RouteGenerator {
                 name: args['artistName'] as String,
                 email: args['artistEmail'],
                 phone:args['artistPhone'] ,
-                 address: args['artistEmail'],
+                address: args['artistEmail'],
                 category: args['artistCategory'] as String?,
                 price: args['artistPrice'] as String?,
                // imageUrl: args['artistImageUrl'] as String?,

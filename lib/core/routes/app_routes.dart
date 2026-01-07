@@ -34,6 +34,8 @@ class AppRoutes {
   static const String addReview = '/add-review';
   static const String customerReviews = '/customer-reviews';
   static const String customerSettings = '/customer-settings';
+  static const String customerMediaDetail = '/customer-media-detail';
+
 
   // Common Routes
   static const String mediaComments = '/media-comments';
