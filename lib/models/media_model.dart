@@ -24,6 +24,31 @@ class MediaModel {
     required this.shareCount,
     required this.createdAt,
   });
+  MediaModel copyWith({
+    int? id,
+    int? artistId,
+    String? artistName,
+    String? mediaType,
+    String? mediaUrl,
+    String? caption,
+    int? likeCount,
+    int? commentCount,
+    int? shareCount,
+    DateTime? createdAt,
+  }) {
+    return MediaModel(
+      id: id ?? this.id,
+      artistId: artistId ?? this.artistId,
+      artistName: artistName ?? this.artistName,
+      mediaType: mediaType ?? this.mediaType,
+      mediaUrl: mediaUrl ?? this.mediaUrl,
+      caption: caption ?? this.caption,
+      likeCount: likeCount ?? this.likeCount,
+      commentCount: commentCount ?? this.commentCount,
+      shareCount: shareCount ?? this.shareCount,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 
   factory MediaModel.fromJson(Map<String, dynamic> json) {
     return MediaModel(

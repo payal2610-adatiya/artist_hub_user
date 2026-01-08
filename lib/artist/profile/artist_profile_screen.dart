@@ -86,8 +86,9 @@ class _ArtistProfileScreenState extends State<ArtistProfileScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        iconTheme: IconThemeData(color: Colors.white),
         backgroundColor: AppColors.primaryColor,
-        title: const Text('Artist Profile'),
+        title: const Text('Artist Profile',style: TextStyle(color: Colors.white),),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),

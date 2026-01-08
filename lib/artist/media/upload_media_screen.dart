@@ -6,800 +6,411 @@ import 'package:artist_hub/core/routes/app_routes.dart';
 import 'package:artist_hub/core/services/api_service.dart';
 import 'package:artist_hub/core/services/shared_pref.dart';
 import 'package:artist_hub/core/widgets/custom_button.dart';
-import 'package:artist_hub/core/widgets/custom_textfield.dart';
 import 'package:artist_hub/utils/helpers.dart';
-import 'package:video_player/video_player.dart';
-import 'package:path/path.dart' as path;
-import 'package:artist_hub/models/media_model.dart';
 
 class UploadMediaScreen extends StatefulWidget {
-  const UploadMediaScreen({super.key});
+  const UploadMediaScreen({Key? key}) : super(key: key);
 
   @override
-  State<UploadMediaScreen> createState() => _UploadMediaScreenState();
+  _UploadMediaScreenState createState() => _UploadMediaScreenState();
 }
 
 class _UploadMediaScreenState extends State<UploadMediaScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _captionController = TextEditingController();
+  final TextEditingController _captionController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
-
-  File? _selectedFile;
+  File? _selectedMedia;
   String? _mediaType;
-  bool _isLoading = false;
   bool _isUploading = false;
-  VideoPlayerController? _videoController;
-
-  List<MediaModel> _recentUploads = [];
+  bool _isLoading = false;
+  int _totalPosts = 0;
+  int _imageCount = 0;
+  int _videoCount = 0;
 
   @override
   void initState() {
     super.initState();
-    _loadRecentUploads();
+    _loadMediaStats();
   }
 
-  Future<void> _loadRecentUploads() async {
-    setState(() => _isLoading = true);
-
+  Future<void> _loadMediaStats() async {
     final userId = SharedPref.getUserId();
-    if (userId.isEmpty) {
-      setState(() => _isLoading = false);
-      return;
-    }
+    if (userId.isEmpty) return;
+
+    setState(() => _isLoading = true);
 
     try {
       final result = await ApiService.getArtistMedia(artistId: int.parse(userId));
+
       if (result['success'] == true && result['data'] != null) {
         final List<dynamic> data = result['data'];
         setState(() {
-          _recentUploads = data.take(3).map((item) {
-            return MediaModel.fromJson({
-              'id': item['id'],
-              'artist_id': int.parse(userId),
-              'artist_name': SharedPref.getUserName() ?? 'You',
-              'media_type': item['media_type'],
-              'media_url': item['media_url'],
-              'caption': item['caption'] ?? '',
-              'like_count': item['like_count'] ?? 0,
-              'comment_count': item['comment_count'] ?? 0,
-              'share_count': item['share_count'] ?? 0,
-              'created_at': item['created_at'] ?? DateTime.now().toIso8601String(),
-            });
-          }).toList();
+          _totalPosts = data.length;
+          _imageCount = data.where((item) => item['media_type'] == 'image').length;
+          _videoCount = data.where((item) => item['media_type'] == 'video').length;
         });
       }
     } catch (e) {
-      print('Error loading recent uploads: $e');
-      // Don't show error for recent uploads
+      print('Error loading media stats: $e');
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _pickMedia(ImageSource source) async {
+  Future<void> _pickImage() async {
     try {
-      XFile? pickedFile;
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+      if (image != null) {
+        final file = File(image.path);
+        final sizeInMB = await file.length() / (1024 * 1024);
 
-      if (_mediaType == 'image') {
-        pickedFile = await _picker.pickImage(
-          source: source,
-          imageQuality: 85,
-        );
-      } else if (_mediaType == 'video') {
-        pickedFile = await _picker.pickVideo(source: source);
-      }
-
-      if (pickedFile != null) {
-        final file = File(pickedFile.path);
-
-        // Check file size (limit: 50MB)
-        final fileSize = await file.length();
-        if (fileSize > 50 * 1024 * 1024) {
-          Helpers.showSnackbar(context, 'File size should be less than 50MB', isError: true);
+        if (sizeInMB > 50) {
+          Helpers.showSnackbar(context, 'Image size must be less than 50MB', isError: true);
           return;
         }
 
         setState(() {
-          _selectedFile = file;
+          _selectedMedia = file;
+          _mediaType = 'image';
         });
-
-        // Initialize video player if video is selected
-        if (_mediaType == 'video') {
-          if (_videoController != null) {
-            await _videoController!.dispose();
-          }
-          _videoController = VideoPlayerController.file(file)
-            ..initialize().then((_) {
-              if (mounted) {
-                setState(() {});
-              }
-            });
-        } else {
-          _videoController?.dispose();
-          _videoController = null;
-        }
       }
     } catch (e) {
-      Helpers.showSnackbar(context, 'Failed to pick media: $e', isError: true);
+      Helpers.showSnackbar(context, 'Failed to pick image: $e', isError: true);
+    }
+  }
+
+  Future<void> _pickVideo() async {
+    try {
+      final XFile? video = await _picker.pickVideo(
+        source: ImageSource.gallery,
+        maxDuration: const Duration(minutes: 5),
+      );
+      if (video != null) {
+        final videoFile = File(video.path);
+        final sizeInMB = await videoFile.length() / (1024 * 1024);
+
+        if (sizeInMB > 100) {
+          Helpers.showSnackbar(context, 'Video size must be less than 100MB', isError: true);
+          return;
+        }
+
+        setState(() {
+          _selectedMedia = videoFile;
+          _mediaType = 'video';
+        });
+      }
+    } catch (e) {
+      Helpers.showSnackbar(context, 'Failed to pick video: $e', isError: true);
     }
   }
 
   Future<void> _uploadMedia() async {
-    if (_selectedFile == null || _mediaType == null) {
+    if (_selectedMedia == null || _mediaType == null) {
       Helpers.showSnackbar(context, 'Please select media to upload', isError: true);
       return;
     }
 
-    if (!_formKey.currentState!.validate()) return;
-
-    final hasInternet = await Helpers.checkInternetBeforeApiCall(context);
-    if (!hasInternet) return;
-
-    setState(() => _isUploading = true);
-
     final userId = SharedPref.getUserId();
     if (userId.isEmpty) {
-      Helpers.showSnackbar(context, 'User not found', isError: true);
-      setState(() => _isUploading = false);
+      Helpers.showSnackbar(context, 'Please login to upload media', isError: true);
       return;
     }
+
+    setState(() => _isUploading = true);
 
     try {
       final result = await ApiService.addArtistMedia(
         artistId: int.parse(userId),
         mediaType: _mediaType!,
-        mediaFile: _selectedFile!,
+        mediaFile: _selectedMedia!,
         caption: _captionController.text.trim(),
       );
 
       if (result['success'] == true) {
-        Helpers.showSnackbar(context, 'Media uploaded successfully');
+        Helpers.showSnackbar(context, 'Media uploaded successfully!', isError: false);
 
         // Reset form
-        _selectedFile = null;
-        _mediaType = null;
-        _captionController.clear();
-        _videoController?.dispose();
-        _videoController = null;
+        setState(() {
+          _selectedMedia = null;
+          _mediaType = null;
+          _captionController.clear();
+        });
 
-        // Reload recent uploads
-        await _loadRecentUploads();
+        // Refresh stats
+        await _loadMediaStats();
 
-        // Clear form key
-        _formKey.currentState?.reset();
-
-        // Navigate back to gallery if needed
+        // Navigate back or show success
         Navigator.pop(context, true);
       } else {
         Helpers.showSnackbar(
-          context,
-          result['message'] ?? 'Failed to upload media',
-          isError: true,
+            context,
+            result['message'] ?? 'Upload failed',
+            isError: true
         );
       }
     } catch (e) {
-      Helpers.showSnackbar(context, 'Upload failed: ${e.toString()}', isError: true);
+      Helpers.showSnackbar(context, 'Upload failed: $e', isError: true);
     } finally {
-      if (mounted) {
-        setState(() => _isUploading = false);
-      }
+      setState(() => _isUploading = false);
     }
   }
 
-  void _removeMedia() {
-    setState(() {
-      _selectedFile = null;
-      _mediaType = null;
-      _videoController?.dispose();
-      _videoController = null;
-    });
-  }
-
-  String _getFileSize() {
-    if (_selectedFile == null) return '';
-    final bytes = _selectedFile!.lengthSync();
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
-
-  String _getFileName() {
-    if (_selectedFile == null) return '';
-    return path.basename(_selectedFile!.path);
-  }
-
-  void _viewMediaDetail(MediaModel media) {
+  void _viewMediaGallery() {
     final userId = SharedPref.getUserId();
-    Navigator.pushNamed(
-      context,
-      AppRoutes.mediaDetail,
-      arguments: {
-        'media': media.toJson(),
-        'artistId': int.parse(userId),
-        'artistName': SharedPref.getUserName() ?? 'You',
-        'isOwnMedia': true,
-      },
-    );
+    if (userId.isNotEmpty) {
+      Navigator.pushNamed(
+        context,
+        AppRoutes.mediaGallery,
+        arguments: {
+          'artistId': int.parse(userId),
+          'artistName': SharedPref.getUserName() ?? 'My Portfolio',
+          'isOwnGallery': true,
+        },
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Upload Media'),
+        title: const Text('Upload Media', style: TextStyle(color: Colors.white)),
         backgroundColor: AppColors.primaryColor,
+        elevation: 1,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadRecentUploads,
-            tooltip: 'Refresh',
+            icon: const Icon(Icons.photo_library, color: Colors.white),
+            onPressed: _viewMediaGallery,
           ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Media type selection
-            _buildMediaTypeSelector(),
-
-            const SizedBox(height: 24),
-
-            // Media preview or file info
-            if (_selectedFile != null) _buildMediaPreview(),
-
-            const SizedBox(height: 24),
-
-            // Caption field
-            _buildCaptionField(),
-
-            const SizedBox(height: 32),
-
-            // Upload button
-            _buildUploadButton(),
-
-            const SizedBox(height: 32),
-
-            // Recent uploads
-            _buildRecentUploads(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMediaTypeSelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Select Media Type',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textColor,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Choose whether to upload an image or video',
-          style: TextStyle(
-            fontSize: 14,
-            color: AppColors.darkGrey,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildMediaTypeButton(
-                type: 'image',
-                label: 'Image',
-                icon: Icons.image,
-                color: AppColors.primaryColor,
+            // Media Preview
+            Container(
+              width: double.infinity,
+              height: 200,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: AppColors.backgroundColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.lightGrey),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildMediaTypeButton(
-                type: 'video',
-                label: 'Video',
-                icon: Icons.videocam,
-                color: AppColors.secondaryColor,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMediaTypeButton({
-    required String type,
-    required String label,
-    required IconData icon,
-    required Color color,
-  }) {
-    final isSelected = _mediaType == type;
-
-    return ElevatedButton(
-      onPressed: () {
-        setState(() => _mediaType = type);
-      },
-      style: ElevatedButton.styleFrom(
-        backgroundColor: isSelected ? color : color.withOpacity(0.1),
-        foregroundColor: isSelected ? AppColors.white : color,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        elevation: 0,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 24),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: isSelected ? AppColors.white : color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMediaPreview() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Media Preview',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textColor,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          height: 220,
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.shadowColor,
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Media display
-              if (_mediaType == 'image' && _selectedFile != null)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    _selectedFile!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.broken_image,
-                              size: 48,
-                              color: AppColors.grey,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Failed to load image',
-                              style: TextStyle(color: AppColors.grey),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+              child: _selectedMedia != null
+                  ? ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: _mediaType == 'image'
+                    ? Image.file(
+                  _selectedMedia!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return _buildPlaceholder('Failed to load image');
+                  },
                 )
-              else if (_mediaType == 'video' && _videoController != null && _videoController!.value.isInitialized)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: VideoPlayer(_videoController!),
-                )
-              else if (_mediaType == 'video' && _selectedFile != null)
-                  Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.videocam,
-                          size: 48,
-                          color: AppColors.grey,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Video selected',
-                          style: TextStyle(color: AppColors.grey),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _getFileName(),
-                          style: TextStyle(color: AppColors.darkGrey, fontSize: 12),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.media_bluetooth_off,
-                          size: 48,
-                          color: AppColors.lightGrey,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'No media selected',
-                          style: TextStyle(color: AppColors.grey),
-                        ),
-                      ],
-                    ),
-                  ),
-
-              // Play button for video
-              if (_mediaType == 'video' && _videoController != null && _videoController!.value.isInitialized)
-                Center(
-                  child: CircleAvatar(
-                    radius: 28,
-                    backgroundColor: Colors.black.withOpacity(0.6),
-                    child: IconButton(
-                      icon: Icon(
-                        _videoController!.value.isPlaying
-                            ? Icons.pause
-                            : Icons.play_arrow,
-                        size: 32,
-                        color: AppColors.white,
+                    : Stack(
+                  children: [
+                    Center(
+                      child: Icon(
+                        Icons.videocam,
+                        size: 60,
+                        color: AppColors.primaryColor.withOpacity(0.7),
                       ),
-                      onPressed: () {
-                        setState(() {
-                          if (_videoController!.value.isPlaying) {
-                            _videoController!.pause();
-                          } else {
-                            _videoController!.play();
-                          }
-                        });
-                      },
                     ),
-                  ),
+                    Positioned(
+                      bottom: 10,
+                      right: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'VIDEO',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-
-              // Remove button
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.close, color: AppColors.white, size: 20),
-                    onPressed: _removeMedia,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        // File info
-        if (_selectedFile != null)
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(8),
+              )
+                  : _buildPlaceholder('No media selected'),
             ),
-            child: Row(
+
+            // Media Selection Buttons
+            Row(
               children: [
-                Icon(
-                  _mediaType == 'image' ? Icons.image : Icons.videocam,
-                  color: AppColors.primaryColor,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _getFileName(),
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textColor,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                  child: OutlinedButton.icon(
+                    onPressed: _isUploading ? null : _pickImage,
+                    icon: const Icon(Icons.image),
+                    label: const Text('Pick Image'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primaryColor,
+                      side: BorderSide(color: AppColors.primaryColor),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _getFileSize(),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.darkGrey,
-                        ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _isUploading ? null : _pickVideo,
+                    icon: const Icon(Icons.videocam),
+                    label: const Text('Pick Video'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.secondaryColor,
+                      side: BorderSide(color: AppColors.secondaryColor),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ],
             ),
-          ),
-        const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildPickButton(
-              label: 'Camera',
-              icon: Icons.camera_alt,
-              source: ImageSource.camera,
-              color: AppColors.primaryColor,
-            ),
-            const SizedBox(width: 12),
-            _buildPickButton(
-              label: 'Gallery',
-              icon: Icons.photo_library,
-              source: ImageSource.gallery,
-              color: AppColors.secondaryColor,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
 
-  Widget _buildPickButton({
-    required String label,
-    required IconData icon,
-    required ImageSource source,
-    required Color color,
-  }) {
-    return Expanded(
-      child: ElevatedButton.icon(
-        onPressed: _mediaType == null
-            ? null
-            : () => _pickMedia(source),
-        icon: Icon(icon, size: 20),
-        label: Text(label),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _mediaType == null
-              ? AppColors.grey.withOpacity(0.1)
-              : color.withOpacity(0.1),
-          foregroundColor: _mediaType == null
-              ? AppColors.grey
-              : color,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          elevation: 0,
+            const SizedBox(height: 24),
+
+            // Caption
+            TextField(
+              controller: _captionController,
+              decoration: const InputDecoration(
+                labelText: 'Caption',
+                hintText: 'Add a caption for your media...',
+                border: OutlineInputBorder(),
+                alignLabelWithHint: true,
+              ),
+              maxLines: 3,
+              enabled: !_isUploading,
+            ),
+
+            const SizedBox(height: 30),
+
+            // Upload Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isUploading
+                    ? null
+                    : () {
+                  _uploadMedia();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: _isUploading
+                    ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+                    : const Text(
+                  'UPLOAD MEDIA',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            // Quick Stats
+            if (_totalPosts > 0)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.lightGrey),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildStatItem('Total Posts', _totalPosts.toString()),
+                    _buildStatItem('Images', _imageCount.toString()),
+                    _buildStatItem('Videos', _videoCount.toString()),
+                  ],
+                ),
+              ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildCaptionField() {
+  Widget _buildPlaceholder(String text) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Text(
-          'Caption',
+        Icon(
+          Icons.cloud_upload,
+          size: 60,
+          color: AppColors.lightGrey,
+        ),
+        const SizedBox(height: 16),
+        Text(
+          text,
           style: TextStyle(
             fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textColor,
+            color: AppColors.grey,
           ),
         ),
         const SizedBox(height: 8),
-        Form(
-          key: _formKey,
-          child: CustomTextField(
-            controller: _captionController,
-            hintText: 'Add a caption for your media...',
-            maxLines: 3,
-            prefixIcon: const Icon(Icons.description_outlined, color: AppColors.darkGrey),
-            validator: (value) {
-              if (value != null && value.trim().length > 500) {
-                return 'Caption cannot exceed 500 characters';
-              }
-              return null;
-            },
-            labelText: '',
+        Text(
+          'Upload images or videos from your gallery',
+          style: TextStyle(
+            fontSize: 14,
+            color: AppColors.grey,
           ),
+          textAlign: TextAlign.center,
         ),
       ],
     );
   }
 
-  Widget _buildUploadButton() {
-    return CustomButton(
-      text: _isUploading ? 'Uploading...' : 'Upload Media',
-      onPressed: () {
-        // Check conditions before calling _uploadMedia
-        if (_selectedFile == null || _isUploading) return;
-        _uploadMedia();
-      },
-      isLoading: _isUploading,
-      backgroundColor: _selectedFile == null
-          ? AppColors.grey.withOpacity(0.5)
-          : AppColors.primaryColor,
-      fullWidth: true, // Make sure your CustomButton accepts this parameter
-    );
-  }
-  Widget _buildRecentUploads() {
-    if (_recentUploads.isEmpty && !_isLoading) {
-      return const SizedBox.shrink();
-    }
-
+  Widget _buildStatItem(String label, String value) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Recent Uploads',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textColor,
-              ),
-            ),
-            if (_recentUploads.isNotEmpty)
-              TextButton(
-                onPressed: () {
-                  final userId = SharedPref.getUserId();
-                  if (userId.isNotEmpty) {
-                    Navigator.pushNamed(
-                      context,
-                      AppRoutes.mediaGallery,
-                      arguments: {
-                        'artistId': int.parse(userId),
-                        'artistName': SharedPref.getUserName() ?? 'My Portfolio',
-                        'isOwnGallery': true,
-                      },
-                    );
-                  }
-                },
-                child: Text(
-                  'View All',
-                  style: TextStyle(
-                    color: AppColors.primaryColor,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (_isLoading)
-          const Center(child: CircularProgressIndicator())
-        else
-          Column(
-            children: _recentUploads.map((media) {
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.shadowColor,
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    // Media thumbnail
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: media.isImage
-                          ? ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          media.mediaUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Center(
-                              child: Icon(
-                                Icons.image,
-                                color: AppColors.primaryColor,
-                              ),
-                            );
-                          },
-                        ),
-                      )
-                          : Center(
-                        child: Icon(
-                          Icons.videocam,
-                          color: AppColors.primaryColor,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            media.caption.isNotEmpty ? media.caption : 'No caption',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textColor,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            Helpers.timeAgo(media.createdAt.toIso8601String()),
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.darkGrey,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(
-                        Icons.visibility_outlined,
-                        size: 20,
-                        color: AppColors.primaryColor,
-                      ),
-                      onPressed: () {
-                        _viewMediaDetail(media);
-                      },
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: AppColors.primaryColor,
           ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: AppColors.grey,
+          ),
+        ),
       ],
     );
-  }
-
-  @override
-  void dispose() {
-    _captionController.dispose();
-    _videoController?.dispose();
-    super.dispose();
   }
 }

@@ -107,13 +107,17 @@ class _MediaGalleryScreenState extends State<MediaGalleryScreen> {
   }
 
   Future<void> _openMediaDetail(MediaModel media) async {
+    final mediaWithFullUrl = media.copyWith(
+      mediaUrl: media.mediaUrl.startsWith('http')
+          ? media.mediaUrl
+          : 'https://prakrutitech.xyz/gaurang/${media.mediaUrl}',
+    );
+
     final result = await Navigator.pushNamed(
       context,
-      AppRoutes.mediaDetail,
+      AppRoutes.artistMediaDetail,
       arguments: {
-        'media': media.toJson(),
-        'artistId': widget.artistId,
-        'artistName': widget.artistName,
+        'media': mediaWithFullUrl,
         'isOwnMedia': widget.isOwnGallery,
       },
     );
@@ -189,9 +193,7 @@ class _MediaGalleryScreenState extends State<MediaGalleryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar:AppBar(
-        iconTheme: IconThemeData(color: Colors.white),
-
+      appBar: AppBar(
         title: Text(
           widget.isOwnGallery ? 'My Portfolio' : widget.artistName,
           maxLines: 1,
@@ -200,7 +202,7 @@ class _MediaGalleryScreenState extends State<MediaGalleryScreen> {
         ),
         backgroundColor: AppColors.primaryColor,
         elevation: 0,
-
+        iconTheme: IconThemeData(color: Colors.white), // Add this line
       ),
       body: _isLoading
           ? const LoadingWidget(message: 'Loading media...')
@@ -554,9 +556,15 @@ class _MediaGalleryScreenState extends State<MediaGalleryScreen> {
   }
 
   Widget _buildMediaThumbnail(MediaModel media) {
+    // Ensure URL has full path
+    String mediaUrl = media.mediaUrl;
+    if (mediaUrl.isNotEmpty && !mediaUrl.startsWith('http')) {
+      mediaUrl = 'https://prakrutitech.xyz/gaurang/$mediaUrl';
+    }
+
     if (media.isImage) {
       return CachedNetworkImage(
-        imageUrl: media.mediaUrl,
+        imageUrl: mediaUrl,
         fit: BoxFit.cover,
         placeholder: (context, url) => Container(
           color: AppColors.primaryColor.withOpacity(0.1),
@@ -569,15 +577,15 @@ class _MediaGalleryScreenState extends State<MediaGalleryScreen> {
         ),
         errorWidget: (context, url, error) => Container(
           color: AppColors.lightGrey,
-          child: const Center(
+          child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.broken_image, color: AppColors.grey),
+                Icon(Icons.broken_image, color: AppColors.grey, size: 30),
                 SizedBox(height: 4),
                 Text(
-                  'Failed to load',
-                  style: TextStyle(fontSize: 8, color: AppColors.grey),
+                  'Image not found',
+                  style: TextStyle(fontSize: 10, color: AppColors.grey),
                 ),
               ],
             ),
@@ -587,17 +595,29 @@ class _MediaGalleryScreenState extends State<MediaGalleryScreen> {
     } else {
       return Container(
         color: AppColors.secondaryColor.withOpacity(0.1),
-        child: const Center(
-          child: Icon(
-            Icons.videocam,
-            size: 40,
-            color: AppColors.secondaryColor,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.videocam,
+                size: 40,
+                color: AppColors.secondaryColor,
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Video',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: AppColors.secondaryColor,
+                ),
+              ),
+            ],
           ),
         ),
       );
     }
   }
-
   void _showMediaOptions(MediaModel media) {
     showModalBottomSheet(
       context: context,

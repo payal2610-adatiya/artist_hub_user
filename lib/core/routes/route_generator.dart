@@ -25,8 +25,10 @@ import 'package:artist_hub/customer/bookings/booking_screen.dart';
 import 'package:artist_hub/customer/search/search_artist_screen.dart';
 import 'package:artist_hub/customer/reviews/add_review_screen.dart';
 
+import '../../artist/media/media_detail_screen.dart';
 import '../../customer/search/artist_detail_screen.dart';
 import '../../models/artist_model.dart';
+import '../../models/media_model.dart';
 
 class RouteGenerator {
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -72,6 +74,16 @@ class RouteGenerator {
           );
         }
         return _errorRoute();
+    // Add this new case for artist media detail
+      case AppRoutes.artistMediaDetail:
+        final args = settings.arguments as Map<String, dynamic>;
+
+        return MaterialPageRoute(
+          builder: (_) => ArtistMediaDetailScreen(
+            media: args['media'] as MediaModel,
+            isOwnMedia: args['isOwnMedia'] ?? false,
+          ),
+        );
 
       case AppRoutes.artistReviews:
         return MaterialPageRoute(builder: (_) => const ArtistReviewsScreen());

@@ -9,11 +9,15 @@ class CustomButton extends StatelessWidget {
   final Color? backgroundColor;
   final Color? textColor;
   final bool fullWidth; // Add this parameter
+  final Future<void> Function()? onAsyncPressed; // Add this
+
 
   const CustomButton({
     Key? key,
     required this.text,
     required this.onPressed,
+    this.onAsyncPressed, // Add this
+
     this.isLoading = false,
     this.backgroundColor,
     this.textColor,
