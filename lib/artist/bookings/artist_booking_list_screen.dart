@@ -287,58 +287,6 @@ class _ArtistBookingListScreenState extends State<ArtistBookingListScreen> {
     _loadBookings();
   }
 
-  void _showSearchDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          return AlertDialog(
-            title: const Text('Search Bookings'),
-            content: TextField(
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: 'Search by customer name or location...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-                _applyFilters();
-              },
-            ),
-            actions: [
-              if (_searchQuery.isNotEmpty)
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _searchQuery = '';
-                    });
-                    _applyFilters();
-                  },
-                  child: const Text('Clear'),
-                ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: const Text('Close'),
-              ),
-            ],
-          );
-        },
-      ),
-    ).then((_) {
-      // Clear search when dialog closes
-      setState(() {
-        _searchQuery = '';
-        _applyFilters();
-      });
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -348,18 +296,7 @@ class _ArtistBookingListScreenState extends State<ArtistBookingListScreen> {
         iconTheme: const IconThemeData(color: Colors.white),
         backgroundColor: AppColors.primaryColor,
         title: const Text('My Bookings', style: TextStyle(color: Colors.white)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: _showSearchDialog,
-            tooltip: 'Search bookings',
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
-            onPressed: _refreshBookings,
-            tooltip: 'Refresh',
-          ),
-        ],
+
       ),
       body: _isLoading
           ? const LoadingWidget(message: 'Loading bookings...')
@@ -565,6 +502,7 @@ class _ArtistBookingListScreenState extends State<ArtistBookingListScreen> {
 
   Widget _buildBookingsList() {
     return RefreshIndicator(
+      color: AppColors.primaryColor,
       onRefresh: _loadBookings,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),

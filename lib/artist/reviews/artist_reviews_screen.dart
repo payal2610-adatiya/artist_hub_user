@@ -150,7 +150,9 @@ class _ArtistReviewsScreenState extends State<ArtistReviewsScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Reviews & Ratings'),
+        backgroundColor: AppColors.primaryColor,
+        iconTheme: IconThemeData(color: Colors.white),
+        title: const Text('Reviews & Ratings',style: TextStyle(color: Colors.white),),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

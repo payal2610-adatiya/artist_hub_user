@@ -178,6 +178,7 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        iconTheme: IconThemeData(color: Colors.white),
         title: const Text('Upload Media', style: TextStyle(color: Colors.white)),
         backgroundColor: AppColors.primaryColor,
         elevation: 1,
@@ -290,14 +291,49 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
             // Caption
             TextField(
               controller: _captionController,
-              decoration: const InputDecoration(
-                labelText: 'Caption',
-                hintText: 'Add a caption for your media...',
-                border: OutlineInputBorder(),
-                alignLabelWithHint: true,
-              ),
               maxLines: 3,
               enabled: !_isUploading,
+              decoration: InputDecoration(
+                labelText: 'Caption',
+                hintText: 'Add a caption for your media...',
+                alignLabelWithHint: true,
+
+                labelStyle: const TextStyle(
+                  color: AppColors.primaryColor,
+                ),
+
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(
+                    color: AppColors.primaryColor,
+                    width: 1.2,
+                  ),
+                ),
+
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(
+                    color: AppColors.primaryColor,
+                    width: 1.2,
+                  ),
+                ),
+
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(
+                    color: AppColors.primaryColor,
+                    width: 1.8,
+                  ),
+                ),
+
+                disabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: AppColors.primaryColor.withOpacity(0.4),
+                    width: 1.2,
+                  ),
+                ),
+              ),
             ),
 
             const SizedBox(height: 30),
@@ -368,14 +404,14 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
         Icon(
           Icons.cloud_upload,
           size: 60,
-          color: AppColors.lightGrey,
+          color: AppColors.primaryColor,
         ),
         const SizedBox(height: 16),
         Text(
           text,
           style: TextStyle(
             fontSize: 16,
-            color: AppColors.grey,
+            color: AppColors.primaryColor,
           ),
         ),
         const SizedBox(height: 8),
@@ -383,7 +419,7 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
           'Upload images or videos from your gallery',
           style: TextStyle(
             fontSize: 14,
-            color: AppColors.grey,
+            color: AppColors.primaryColor,
           ),
           textAlign: TextAlign.center,
         ),
