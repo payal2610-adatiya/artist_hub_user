@@ -246,6 +246,10 @@ class _SearchArtistScreenState extends State<SearchArtistScreen> {
   }
 
   Widget _buildArtistCard(ArtistModel artist) {
+    // Get the valid price for booking
+    final bookingPrice = _getBookingPrice(artist.price);
+    // /final formattedPrice = _formatPrice(artist.price);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -268,7 +272,7 @@ class _SearchArtistScreenState extends State<SearchArtistScreen> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // Artist avatar
+                // Artist avatar (same as before)
                 Container(
                   width: 70,
                   height: 70,
@@ -309,15 +313,21 @@ class _SearchArtistScreenState extends State<SearchArtistScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
-                      if (artist.category != null)
-                        Text(
-                          artist.category!,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: AppColors.darkGrey,
+                      if (artist.category != null && artist.category!.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          child: Text(
+                            artist.category!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.primaryColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ),
                       const SizedBox(height: 8),
                       Row(
@@ -345,15 +355,15 @@ class _SearchArtistScreenState extends State<SearchArtistScreen> {
                             ),
                           ),
                           const Spacer(),
-                          if (artist.price != null)
-                            Text(
-                              '₹${artist.price}',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primaryColor,
-                              ),
-                            ),
+                          // Display formatted price
+                          // Text(
+                          //   formattedPrice,
+                          //   style: TextStyle(
+                          //     fontSize: 16,
+                          //     fontWeight: FontWeight.w700,
+                          //     color: AppColors.primaryColor,
+                          //   ),
+                          // ),
                         ],
                       ),
                     ],
@@ -362,28 +372,37 @@ class _SearchArtistScreenState extends State<SearchArtistScreen> {
 
                 const SizedBox(width: 8),
 
-                // Book button
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => BookingScreen(artist: artist),
-                      ),
-                    );                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryColor,
-                    foregroundColor: AppColors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                  ),
-                  child: const Text('Book'),
-                ),
+                // Book button - Pass the validated price
+                // ElevatedButton(
+                //   onPressed: bookingPrice > 0
+                //       ? () {
+                //     Navigator.push(
+                //       context,
+                //       MaterialPageRoute(
+                //         builder: (context) => BookingScreen(
+                //           artist: artist,
+                //           basePrice: bookingPrice, // Pass validated price
+                //         ),
+                //       ),
+                //     );
+                //   }
+                //       : () {
+                //     // Show dialog for contact price
+                //     _showContactDialog(artist);
+                //   },
+                //   style: ElevatedButton.styleFrom(
+                //     backgroundColor: AppColors.primaryColor,
+                //     foregroundColor: AppColors.white,
+                //     shape: RoundedRectangleBorder(
+                //       borderRadius: BorderRadius.circular(8),
+                //     ),
+                //     padding: const EdgeInsets.symmetric(
+                //       horizontal: 16,
+                //       vertical: 8,
+                //     ),
+                //   ),
+                //   child: Text(bookingPrice > 0 ? 'Book' : 'Contact'),
+                // ),
               ],
             ),
           ),
@@ -391,4 +410,63 @@ class _SearchArtistScreenState extends State<SearchArtistScreen> {
       ),
     );
   }
+
+// Add this helper method to get validated booking price
+  double _getBookingPrice(String? price) {
+    if (price == null || price.isEmpty || price.toLowerCase() == 'null') {
+      return 0.0;
+    }
+
+    // Try to parse as number
+    final numPrice = double.tryParse(price);
+    if (numPrice == null || numPrice <= 0) {
+      return 0.0;
+    }
+
+    return numPrice;
+  }
+
+// Add this method to show contact dialog
+  void _showContactDialog(ArtistModel artist) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Contact Artist'),
+        content: Text(
+          '${artist.name} does not have a fixed price listed. '
+              'Please contact them directly to discuss pricing and booking details.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+// Add this helper method to format the price
+//   String _formatPrice(String? price) {
+//     if (price == null || price.isEmpty || price.toLowerCase() == 'null') {
+//       return 'Contact for price';
+//     }
+//
+//     // Check if price is a valid number
+//     final cleanedPrice = price.replaceAll(RegExp(r'[^0-9.]'), '');
+//     if (cleanedPrice.isEmpty || cleanedPrice == '0') {
+//       return 'Contact for price';
+//     }
+//
+//     // Try to parse as number
+//     try {
+//       final numPrice = double.tryParse(cleanedPrice);
+//       if (numPrice == null || numPrice == 0) {
+//         return 'Contact for price';
+//       }
+//       return '₹${numPrice.toStringAsFixed(0)}';
+//     } catch (e) {
+//       return '₹$price';
+//     }
+//   }
+
 }

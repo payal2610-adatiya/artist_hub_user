@@ -12,8 +12,10 @@ import '../../core/routes/app_routes.dart';
 
 class BookingScreen extends StatefulWidget {
   final ArtistModel artist;
+  final double basePrice;
 
-  const BookingScreen({super.key, required this.artist});
+  const BookingScreen({super.key, required this.artist,    this.basePrice = 0.0, // Default to 0
+  });
 
   @override
 
@@ -47,11 +49,76 @@ class _BookingScreenState extends State<BookingScreen> {
   String? _errorMessage;
 
   // Calculate total amount
+// Update the getter for total amount
   int get _totalAmount {
-    final artistPrice = int.tryParse(widget.artist.price?.toString() ?? '0') ?? 0;
-    return artistPrice; // Remove service fee if not needed
+    // Debug the price value
+    print('Artist price string: ${widget.artist.price}');
+    print('Price runtime type: ${widget.artist.price.runtimeType}');
+
+    // Handle null or empty price
+    if (widget.artist.price == null ||
+        widget.artist.price!.isEmpty ||
+        widget.artist.price!.toLowerCase() == 'null') {
+      print('Price is null/empty, returning 0');
+      return 0;
+    }
+
+    // Clean the price string - remove any non-numeric characters except decimal point
+    String cleanPrice = widget.artist.price!.replaceAll(RegExp(r'[^0-9.]'), '');
+    print('Cleaned price string: $cleanPrice');
+
+    if (cleanPrice.isEmpty) {
+      print('Cleaned price is empty, returning 0');
+      return 0;
+    }
+
+    // Try parsing as double first, then convert to int
+    try {
+      double parsedPrice = double.parse(cleanPrice);
+      print('Parsed double price: $parsedPrice');
+
+      // Round to nearest integer
+      int intPrice = parsedPrice.round();
+      print('Rounded integer price: $intPrice');
+
+      return intPrice;
+    } catch (e) {
+      print('Error parsing price: $e');
+      // Try as int directly
+      try {
+        int intPrice = int.parse(cleanPrice);
+        print('Directly parsed integer price: $intPrice');
+        return intPrice;
+      } catch (e2) {
+        print('Failed to parse as integer: $e2');
+        return 0;
+      }
+    }
   }
 
+// Alternative: Create a helper method to format price for display
+  String _formatDisplayPrice() {
+    if (widget.artist.price == null ||
+        widget.artist.price!.isEmpty ||
+        widget.artist.price!.toLowerCase() == 'null') {
+      return 'Contact for price';
+    }
+
+    try {
+      // Clean the price string
+      String cleanPrice = widget.artist.price!.replaceAll(RegExp(r'[^0-9.]'), '');
+      if (cleanPrice.isEmpty) return 'Contact for price';
+
+      double parsedPrice = double.parse(cleanPrice);
+      if (parsedPrice == 0) return 'Contact for price';
+
+      // Format with Indian Rupee symbol and thousands separator
+      return '₹${parsedPrice.toStringAsFixed(0)}';
+    } catch (e) {
+      // If parsing fails, try to display the original string
+      return '₹${widget.artist.price!}';
+    }
+  }
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -160,7 +227,50 @@ class _BookingScreenState extends State<BookingScreen> {
       setState(() => _isLoading = false);
     }
   }
+  // Future<void> _submitBooking() async {
+  //   // Check if artist has a valid price
+  //   if (_totalAmount == 0) {
+  //     Helpers.showSnackbar(
+  //         context,
+  //         'This artist does not have fixed pricing. Please contact them directly.',
+  //         isError: true
+  //     );
+  //
+  //     // Optionally show a contact dialog
+  //     _showContactDialog();
+  //     return;
+  //   }
+  //
+  //   if (!_formKey.currentState!.validate()) {
+  //     return;
+  //   }
+  //
+  //   if (_selectedDate == null) {
+  //     Helpers.showSnackbar(context, 'Please select a booking date', isError: true);
+  //     return;
+  //   }
+  //
+  //   // Rest of your validation...
+  // }
 
+  void _showContactDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Contact ${widget.artist.name}'),
+        content: Text(
+            '${widget.artist.name} does not have fixed pricing listed. '
+                'Please contact them directly to discuss your event requirements and get a quote.'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -249,6 +359,7 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
+
   Widget _buildArtistInfo() {
     return Card(
       elevation: 2,
@@ -302,7 +413,7 @@ class _BookingScreenState extends State<BookingScreen> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.star, color: AppColors.secondaryColor, size: 16),
+                      Icon(Icons.star, color: AppColors.secondaryColor, size: 12),
                       const SizedBox(width: 4),
                       Text(
                         widget.artist.avgRating?.toStringAsFixed(1) ?? '0.0',
@@ -326,7 +437,7 @@ class _BookingScreenState extends State<BookingScreen> {
               ),
             ),
             Text(
-              '₹${widget.artist.price ?? '0'}',
+              _formatDisplayPrice(), // Use the formatted price
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -338,7 +449,6 @@ class _BookingScreenState extends State<BookingScreen> {
       ),
     );
   }
-
   Widget _buildDatePicker() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -463,6 +573,41 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
+  // Widget _buildBookingSummary() {
+  //   return Card(
+  //     elevation: 2,
+  //     shape: RoundedRectangleBorder(
+  //       borderRadius: BorderRadius.circular(16),
+  //     ),
+  //     child: Padding(
+  //       padding: const EdgeInsets.all(16),
+  //       child: Column(
+  //         crossAxisAlignment: CrossAxisAlignment.start,
+  //         children: [
+  //           Text(
+  //             'Booking Summary',
+  //             style: TextStyle(
+  //               fontSize: 18,
+  //               fontWeight: FontWeight.bold,
+  //               color: AppColors.textColor,
+  //             ),
+  //           ),
+  //           const SizedBox(height: 16),
+  //           _buildSummaryItem(
+  //             'Artist Fee',
+  //             '₹${widget.artist.price ?? '0'}',
+  //           ),
+  //           const Divider(height: 24),
+  //           _buildSummaryItem(
+  //             'Total Amount',
+  //             '₹$_totalAmount',
+  //             isTotal: true,
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
   Widget _buildBookingSummary() {
     return Card(
       elevation: 2,
@@ -485,20 +630,33 @@ class _BookingScreenState extends State<BookingScreen> {
             const SizedBox(height: 16),
             _buildSummaryItem(
               'Artist Fee',
-              '₹${widget.artist.price ?? '0'}',
+              _formatDisplayPrice(), // Use formatted price here too
             ),
             const Divider(height: 24),
             _buildSummaryItem(
               'Total Amount',
-              '₹$_totalAmount',
+              _totalAmount > 0 ? '₹$_totalAmount' : 'Contact Artist',
               isTotal: true,
             ),
+            // Add a note if price is 0
+            if (_totalAmount == 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(
+                  'Note: This artist does not have fixed pricing. '
+                      'Please contact them for a custom quote.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.warningColor ?? Colors.orange,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
     );
   }
-
   Widget _buildSummaryItem(String label, String value, {bool isTotal = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),

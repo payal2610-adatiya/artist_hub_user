@@ -10,6 +10,8 @@ import 'package:artist_hub/models/artist_model.dart';
 import 'package:artist_hub/models/review_model.dart';
 import 'package:artist_hub/utils/helpers.dart';
 
+import '../reviews/add_review_screen.dart';
+
 // Portfolio Item Model with like/comment data
 class PortfolioItem {
   final int id;
@@ -488,7 +490,9 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(_artist?.name ?? 'Artist Details'),
+        iconTheme: IconThemeData(color: Colors.white),
+        backgroundColor: AppColors.primaryColor,
+        title: Text(_artist?.name ?? 'Artist Details',style: TextStyle(color: Colors.white),),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -719,8 +723,8 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
             alignment: WrapAlignment.spaceAround,
             children: [
               _buildStatItem('Experience', _artist!.experience ?? 'N/A'),
-              _buildStatItem('Bookings', (_artist!.totalReviews ?? 0).toString()),
-              _buildStatItem('Posts', _portfolio.length.toString()),
+              //_buildStatItem('Bookings', (_artist!.totalBookings ?? 0).toString()),
+            //  _buildStatItem('Posts', _portfolio.length.toString()),
             ],
           ),        ],
       ),
@@ -1298,55 +1302,105 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
     );
   }
 
+  // Widget _buildReviewsTab() {
+  //   return Padding(
+  //     padding: const EdgeInsets.all(20),
+  //     child: Column(
+  //       crossAxisAlignment: CrossAxisAlignment.start,
+  //       children: [
+  //         const Text(
+  //           'Reviews',
+  //           style: TextStyle(
+  //             fontSize: 18,
+  //             fontWeight: FontWeight.w600,
+  //             color: AppColors.textColor,
+  //           ),
+  //         ),
+  //         const SizedBox(height: 12),
+  //         if (_reviews.isEmpty)
+  //           Container(
+  //             padding: const EdgeInsets.all(40),
+  //             decoration: BoxDecoration(
+  //               color: AppColors.white,
+  //               borderRadius: BorderRadius.circular(12),
+  //             ),
+  //             child: Column(
+  //               children: [
+  //                 const Icon(
+  //                   Icons.reviews_outlined,
+  //                   size: 64,
+  //                   color: AppColors.lightGrey,
+  //                 ),
+  //                 const SizedBox(height: 16),
+  //                 const Text(
+  //                   'No reviews yet',
+  //                   style: TextStyle(
+  //                     fontSize: 16,
+  //                     color: AppColors.darkGrey,
+  //                   ),
+  //                 ),
+  //                 const SizedBox(height: 8),
+  //                 Text(
+  //                   'Be the first to review this artist',
+  //                   style: TextStyle(
+  //                     fontSize: 14,
+  //                     color: AppColors.darkGrey.withOpacity(0.8),
+  //                   ),
+  //                   textAlign: TextAlign.center,
+  //                 ),
+  //               ],
+  //             ),
+  //           )
+  //         else
+  //           Column(
+  //             children: _reviews.map((review) => _buildReviewItem(review)).toList(),
+  //           ),
+  //       ],
+  //     ),
+  //   );
+  // }
+// In _buildReviewsTab() method, add this widget:
   Widget _buildReviewsTab() {
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Reviews',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textColor,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Reviews',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textColor,
+                ),
+              ),
+
+              // Add Review Button
+              FutureBuilder<bool>(
+                future: _hasCompletedBooking(),
+                builder: (context, snapshot) {
+                  if (snapshot.data == true) {
+                    return CustomButton(
+                      text: 'Write Review',
+                      onPressed: () => _openAddReviewScreen(),
+                      backgroundColor: AppColors.primaryColor,
+
+                    );
+                  }
+                  return const SizedBox();
+                },
+              ),
+            ],
           ),
+
           const SizedBox(height: 12),
+
+          // Add this back - you commented it out!
           if (_reviews.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(40),
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  const Icon(
-                    Icons.reviews_outlined,
-                    size: 64,
-                    color: AppColors.lightGrey,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No reviews yet',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: AppColors.darkGrey,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Be the first to review this artist',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.darkGrey.withOpacity(0.8),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            )
+            _buildEmptyReviews()
           else
             Column(
               children: _reviews.map((review) => _buildReviewItem(review)).toList(),
@@ -1355,7 +1409,148 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
       ),
     );
   }
+// Add this method to check if user has completed booking with artist
+  Future<bool> _hasCompletedBooking() async {
+    try {
+      final userId = await SharedPref.getUserId();
+      if (userId.isEmpty) return false;
 
+      final result = await ApiService.getBookingsByCustomer(
+        customerId: int.parse(userId),
+      );
+
+      if (result['success'] == true && result['data'] != null) {
+        final List<dynamic> bookings = result['data'];
+
+        // Check if any completed booking exists with this artist
+        for (var booking in bookings) {
+          // Convert artist_id to int
+          final artistId = int.tryParse(booking['artist_id']?.toString() ?? '0');
+          final status = booking['status']?.toString().toLowerCase() ?? '';
+
+          if (artistId == widget.artistId && status == 'completed') {
+            return true;
+          }
+        }
+      }
+    } catch (e) {
+      print('Error checking completed bookings: $e');
+    }
+    return false;
+  }
+// Method to open Add Review Screen
+  void _openAddReviewScreen() async {
+    try {
+      final userId = await SharedPref.getUserId();
+      if (userId.isEmpty) {
+        Helpers.showSnackbar(context, 'Please login to write a review', isError: true);
+        return;
+      }
+
+      // Get the latest completed booking for this artist
+      final result = await ApiService.getBookingsByCustomer(
+        customerId: int.parse(userId),
+      );
+
+      if (result['success'] == true && result['data'] != null) {
+        final List<dynamic> bookings = result['data'];
+
+        // Find the most recent completed booking for this artist
+        final List<Map<String, dynamic>> completedBookings = [];
+
+        for (var booking in bookings) {
+          final artistId = int.tryParse(booking['artist_id']?.toString() ?? '0');
+          final status = booking['status']?.toString().toLowerCase() ?? '';
+          final bookingId = int.tryParse(booking['id']?.toString() ?? '0');
+
+          if (artistId == widget.artistId &&
+              status == 'completed' &&
+              bookingId != null &&
+              bookingId > 0) {
+
+            completedBookings.add({
+              'id': bookingId,
+              'booking_date': booking['booking_date']?.toString() ?? '',
+              'booking': booking, // Keep the original booking data
+            });
+          }
+        }
+
+        if (completedBookings.isEmpty) {
+          Helpers.showSnackbar(
+            context,
+            'No completed bookings found for this artist',
+            isError: true,
+          );
+          return;
+        }
+
+        // Sort by date (most recent first)
+        completedBookings.sort((a, b) {
+          final dateA = a['booking_date'] as String;
+          final dateB = b['booking_date'] as String;
+          return dateB.compareTo(dateA);
+        });
+
+        final bookingData = completedBookings.first['booking'] as Map<String, dynamic>;
+        final bookingId = int.tryParse(bookingData['id']?.toString() ?? '0') ?? 0;
+
+        if (bookingId == 0) {
+          Helpers.showSnackbar(context, 'Invalid booking ID', isError: true);
+          return;
+        }
+
+        // Check if review already exists for this booking
+        final hasReview = await _checkIfReviewExists(bookingId);
+        if (hasReview) {
+          Helpers.showSnackbar(
+            context,
+            'You have already reviewed this booking',
+            isError: true,
+          );
+          return;
+        }
+
+        // ✅ CORRECT: Navigate to AddReviewScreen with proper parameters
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AddReviewScreen(
+              bookingId: bookingId, // ✅ int
+              artistId: widget.artistId, // ✅ int
+              artistName: _artist?.name ?? 'Artist', // ✅ String
+            ),
+          ),
+        ).then((_) {
+          // Refresh after returning from review screen
+          _loadArtistDetails();
+        });
+      }
+    } catch (e) {
+      print('Error opening add review: $e');
+      Helpers.showSnackbar(context, 'Error: $e', isError: true);
+    }
+  }// Check if review already exists for booking
+  Future<bool> _checkIfReviewExists(int bookingId) async {
+    try {
+      final reviewsResult = await ApiService.getReviewsByArtist(
+        artistId: widget.artistId,
+      );
+
+      if (reviewsResult['success'] == true && reviewsResult['data'] != null) {
+        final List<dynamic> reviews = reviewsResult['data'];
+        final userId = await SharedPref.getUserId();
+
+        return reviews.any((review) {
+          return review['booking_id'] == bookingId &&
+              review['customer_id'].toString() == userId;
+        });
+      }
+    } catch (e) {
+      print('Error checking review existence: $e');
+    }
+    return false;
+  }
   Widget _buildReviewItem(ReviewModel review) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1431,6 +1626,52 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
               color: AppColors.textColor,
               height: 1.5,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyReviews() {
+    return Container(
+      padding: const EdgeInsets.all(40),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.reviews_outlined,
+            size: 64,
+            color: AppColors.lightGrey,
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'No reviews yet',
+            style: TextStyle(
+              fontSize: 16,
+              color: AppColors.darkGrey,
+            ),
+          ),
+          const SizedBox(height: 8),
+          FutureBuilder<bool>(
+            future: _hasCompletedBooking(),
+            builder: (context, snapshot) {
+              if (snapshot.data == true) {
+                return Column(
+                  children: [
+                    const SizedBox(height: 16),
+                    CustomButton(
+                      text: 'Write First Review',
+                      onPressed: _openAddReviewScreen,
+                      backgroundColor: AppColors.primaryColor,
+                    ),
+                  ],
+                );
+              }
+              return const SizedBox();
+            },
           ),
         ],
       ),

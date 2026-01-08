@@ -8,6 +8,9 @@ import 'package:artist_hub/core/widgets/no_data_widget.dart';
 import 'package:artist_hub/models/booking_model.dart';
 import 'package:artist_hub/utils/helpers.dart';
 
+import '../../core/widgets/custom_button.dart';
+import '../reviews/add_review_screen.dart';
+
 class BookingListScreen extends StatefulWidget {
   const BookingListScreen({super.key});
 
@@ -181,15 +184,19 @@ class _BookingListScreenState extends State<BookingListScreen> {
 
   void _addReview(BookingModel booking) {
     if (booking.isCompleted && !booking.isCancelled) {
-      Navigator.pushNamed(
+      Navigator.push(
         context,
-        AppRoutes.addReview,
-        arguments: {
-          'bookingId': booking.id,
-          'artistId': booking.artistId,
-          'artistName': booking.artistName,
-        },
-      );
+        MaterialPageRoute(
+          builder: (context) => AddReviewScreen(
+            bookingId: booking.id, // ✅ int
+            artistId: booking.artistId, // ✅ int
+            artistName: booking.artistName ?? 'Artist', // ✅ String
+          ),
+        ),
+      ).then((_) {
+        // Refresh bookings after review
+        _loadBookings();
+      });
     }
   }
 
@@ -240,12 +247,12 @@ class _BookingListScreenState extends State<BookingListScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        iconTheme: IconThemeData(color: AppColors.white),
+        iconTheme: const IconThemeData(color: Colors.white),
         backgroundColor: AppColors.primaryColor,
-        title: const Text('My Bookings', style: TextStyle(color: AppColors.white)),
+        title: const Text('My Bookings', style: TextStyle(color: Colors.white)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: AppColors.white),
+            icon: const Icon(Icons.refresh, color: Colors.white),
             onPressed: _loadBookings,
           ),
         ],
@@ -323,7 +330,7 @@ class _BookingListScreenState extends State<BookingListScreen> {
         onPressed: () => _changeTab(tab),
         style: ElevatedButton.styleFrom(
           backgroundColor: isSelected ? AppColors.primaryColor : AppColors.white,
-          foregroundColor: isSelected ? AppColors.white : AppColors.darkGrey,
+          foregroundColor: isSelected ? Colors.white : AppColors.darkGrey,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
             side: BorderSide(
@@ -347,7 +354,7 @@ class _BookingListScreenState extends State<BookingListScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppColors.white : AppColors.primaryColor,
+                  color: isSelected ? Colors.white : AppColors.primaryColor,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -355,7 +362,7 @@ class _BookingListScreenState extends State<BookingListScreen> {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color: isSelected ? AppColors.primaryColor : AppColors.white,
+                    color: isSelected ? AppColors.primaryColor : Colors.white,
                   ),
                 ),
               ),
@@ -529,7 +536,7 @@ class _BookingListScreenState extends State<BookingListScreen> {
                       label: const Text('Add Review'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.secondaryColor,
-                        foregroundColor: AppColors.white,
+                        foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -579,5 +586,4 @@ class _BookingListScreenState extends State<BookingListScreen> {
       ),
     );
   }
-
 }
